@@ -2,15 +2,16 @@
 
 #include <api/video/i420_buffer.h>
 
-#include "UnityVideoRenderer.h"
 #include "GraphicsDevice/IGraphicsDevice.h"
+#include "GraphicsDevice/ITexture2D.h"
+#include "UnityVideoRenderer.h"
 
 namespace unity
 {
 namespace webrtc
 {
-
-    UnityVideoRenderer::UnityVideoRenderer(uint32_t id, DelegateVideoFrameResize callback, bool needFlipVertical, IGraphicsDevice* device)
+    UnityVideoRenderer::UnityVideoRenderer(
+        uint32_t id, DelegateVideoFrameResize callback, bool needFlipVertical, IGraphicsDevice* device)
         : m_id(id)
         , m_last_renderered_timestamp(0)
         , m_timestamp(0)
@@ -19,18 +20,17 @@ namespace webrtc
         , m_device(device)
         , m_texture(nullptr)
     {
-        DebugLog("Create UnityVideoRenderer Id:%d", id);
     }
 
     UnityVideoRenderer::~UnityVideoRenderer()
     {
-        DebugLog("Destroy UnityVideoRenderer Id:%d", m_id);
         {
             std::unique_lock<std::mutex> lock(m_mutex);
         }
     }
 
     void UnityVideoRenderer::SetTexture(void* texture) { m_texture = texture; }
+
     void UnityVideoRenderer::OnFrame(const webrtc::VideoFrame& frame)
     {
         rtc::scoped_refptr<webrtc::VideoFrameBuffer> frame_buffer = frame.video_frame_buffer();
@@ -55,6 +55,8 @@ namespace webrtc
         return m_frameBuffer;
     }
 
+    void UnityVideoRenderer::SetTexture(void* texture) { m_texture = m_device->CreateTexture(texture); }
+
     void UnityVideoRenderer::SetFrameBuffer(rtc::scoped_refptr<webrtc::VideoFrameBuffer> buffer, int64_t timestamp)
     {
         std::unique_lock<std::mutex> lock(m_mutex);
@@ -66,6 +68,7 @@ namespace webrtc
         {
             m_callback(this, buffer->width(), buffer->height());
         }
+
         m_frameBuffer = buffer;
         m_timestamp = timestamp;
     }
@@ -94,7 +97,7 @@ namespace webrtc
             }
             return nullptr;
         }
-        
+
         rtc::scoped_refptr<webrtc::I420BufferInterface> i420_buffer;
         if (width == buffer->width() && height == buffer->height())
         {

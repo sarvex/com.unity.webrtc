@@ -70,14 +70,10 @@ namespace webrtc
             buffer_ = nullptr;
             return;
         }
-
-        // const webrtc::TimeDelta timestamp = buffer_->timestamp();
-        // rtc::scoped_refptr<VideoFrameAdapter> frame_adapter(
-        //    new rtc::RefCountedObject<VideoFrameAdapter>(std::move(buffer_)));
-
         ::webrtc::VideoFrame::Builder builder =
             ::webrtc::VideoFrame::Builder().set_video_frame_buffer(std::move(buffer_))
             .set_timestamp_us(timestamp_.us());
+
         OnFrame(builder.build());
     }
 

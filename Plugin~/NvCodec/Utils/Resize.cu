@@ -10,7 +10,8 @@
 */
 
 #include <cuda_runtime.h>
-#include "NvCodecUtils.h"
+#include <stdint.h>
+#include <stdio.h>
 
 template<typename YuvUnitx2>
 static __global__ void Resize(cudaTextureObject_t texY, cudaTextureObject_t texUv,
@@ -55,20 +56,24 @@ static void Resize(unsigned char *dpDst, unsigned char* dpDstUV, int nDstPitch, 
     texDesc.readMode = cudaReadModeNormalizedFloat;
 
     cudaTextureObject_t texY=0;
-    ck(cudaCreateTextureObject(&texY, &resDesc, &texDesc, NULL));
+    if(cudaCreateTextureObject(&texY, &resDesc, &texDesc, NULL) != cudaSuccess) 
+        throw;
 
     resDesc.res.pitch2D.desc = cudaCreateChannelDesc<YuvUnitx2>();
     resDesc.res.pitch2D.width = nSrcWidth / 2;
     resDesc.res.pitch2D.height = nSrcHeight * 3 / 2;
 
     cudaTextureObject_t texUv=0;
-    ck(cudaCreateTextureObject(&texUv, &resDesc, &texDesc, NULL));
+    if(cudaCreateTextureObject(&texUv, &resDesc, &texDesc, NULL) != cudaSuccess) 
+        throw;
 
     Resize<YuvUnitx2> << <dim3((nDstWidth + 31) / 32, (nDstHeight + 31) / 32), dim3(16, 16) >> >(texY, texUv, dpDst, dpDstUV,
         nDstPitch, nDstWidth, nDstHeight, 1.0f * nDstWidth / nSrcWidth, 1.0f * nDstHeight / nSrcHeight);
 
-    ck(cudaDestroyTextureObject(texY));
-    ck(cudaDestroyTextureObject(texUv));
+    if (cudaDestroyTextureObject(texY) != cudaSuccess)
+        throw;
+    if (cudaDestroyTextureObject(texUv) != cudaSuccess)
+        throw;
 }
 
 void ResizeNv12(unsigned char *dpDstNv12, int nDstPitch, int nDstWidth, int nDstHeight, unsigned char *dpSrcNv12, int nSrcPitch, int nSrcWidth, int nSrcHeight, unsigned char* dpDstNv12UV)
@@ -136,7 +141,8 @@ void ScaleKernelLaunch(unsigned char *dpDst, int nDstPitch, int nDstWidth, int n
     texDesc.addressMode[2] = cudaAddressModeClamp;
 
     cudaTextureObject_t texSrc = 0;
-    ck(cudaCreateTextureObject(&texSrc, &resDesc, &texDesc, NULL));
+    if(cudaCreateTextureObject(&texSrc, &resDesc, &texDesc, NULL) != cudaSuccess) 
+        throw;
 
     dim3 blockSize(16, 16, 1);
     dim3 gridSize(((uint32_t)nDstWidth + blockSize.x - 1) / blockSize.x, ((uint32_t)nDstHeight + blockSize.y - 1) / blockSize.y, 1);
@@ -152,8 +158,10 @@ void ScaleKernelLaunch(unsigned char *dpDst, int nDstPitch, int nDstWidth, int n
             nDstPitch, nDstWidth, nDstHeight, 1.0f * nSrcWidth / nDstWidth, 1.0f * nSrcHeight / nDstHeight);
     }
 
-    ck(cudaGetLastError());
-    ck(cudaDestroyTextureObject(texSrc));
+    if(cudaGetLastError() != cudaSuccess) 
+        throw;
+    if(cudaDestroyTextureObject(texSrc) != cudaSuccess) 
+        throw;
 }
 
 void ScaleYUV420(unsigned char *dpDstY,

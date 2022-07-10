@@ -5,6 +5,7 @@
 #include <modules/video_coding/include/video_error_codes.h>
 #include <third_party/libyuv/include/libyuv/convert.h>
 
+#include "ColorSpace.h"
 #include "NvCodecUtils.h"
 #include "NvDecoder/NvDecoder.h"
 #include "NvDecoderImpl.h"
@@ -29,14 +30,15 @@ namespace webrtc
     NvDecoderImpl::NvDecoderImpl(CUcontext context, ProfilerMarkerFactory* profiler)
         : m_context(context)
         , m_decoder(nullptr)
+        , m_dpFrame(0)
         , m_isConfiguredDecoder(false)
         , m_decodedCompleteCallback(nullptr)
-        , m_buffer_pool(false)
+        //        , m_buffer_pool(false)
         , m_profiler(profiler)
     {
-        if (profiler)
-            m_marker = profiler->CreateMarker(
-                "NvDecoderImpl.ConvertNV12ToI420", kUnityProfilerCategoryOther, kUnityProfilerMarkerFlagDefault, 0);
+        // if (profiler)
+        //    m_marker = profiler->CreateMarker(
+        //        "NvDecoderImpl.ConvertNV12ToI420", kUnityProfilerCategoryOther, kUnityProfilerMarkerFlagDefault, 0);
     }
 
     NvDecoderImpl::~NvDecoderImpl() { Release(); }
@@ -80,12 +82,12 @@ namespace webrtc
         // todo(kazuki): Max resolution is differred each architecture.
         // Refer to the table in Video Decoder Capabilities.
         // https://docs.nvidia.com/video-technologies/video-codec-sdk/nvdec-video-decoder-api-prog-guide
-        int maxWidth = 4096;
-        int maxHeight = 4096;
+        const int maxWidth = 4096;
+        const int maxHeight = 4096;
 
         // bUseDeviceFrame: allocate in memory or cuda device memory
         m_decoder = std::make_unique<NvDecoderInternal>(
-            m_context, false, cudaVideoCodec_H264, true, false, nullptr, nullptr, maxWidth, maxHeight);
+            m_context, true, cudaVideoCodec_H264, true, false, nullptr, nullptr, maxWidth, maxHeight);
         return WEBRTC_VIDEO_CODEC_OK;
     }
 
@@ -97,7 +99,15 @@ namespace webrtc
 
     int32_t NvDecoderImpl::Release()
     {
-        m_buffer_pool.Release();
+        if (m_dpFrame != 0)
+        {
+            CUresult result = cuMemFree(m_dpFrame);
+            m_dpFrame = 0;
+            if (result != CUDA_SUCCESS)
+            {
+                RTC_LOG(LS_INFO) << "cuMemFree failed";
+            }
+        }
         return WEBRTC_VIDEO_CODEC_OK;
     }
 
@@ -135,7 +145,16 @@ namespace webrtc
                 sps.value().height != static_cast<uint32_t>(m_decoder->GetHeight()))
             {
                 m_decoder->setReconfigParams(nullptr, nullptr);
+                CUresult result = AllocDeviceMemory(m_dpFrame, sps.value().width * sps.value().height * 4);
+                if (result != CUDA_SUCCESS)
+                    return WEBRTC_VIDEO_CODEC_ERR_PARAMETER;
             }
+        }
+        else
+        {
+            CUresult result = AllocDeviceMemory(m_dpFrame, sps.value().width * sps.value().height * 4);
+            if (result != CUDA_SUCCESS)
+                return WEBRTC_VIDEO_CODEC_ERR_PARAMETER;
         }
 
         int nFrameReturnd = 0;
@@ -160,45 +179,73 @@ namespace webrtc
             ? *input_image.ColorSpace()
             : ExtractH264ColorSpace(m_decoder->GetVideoFormatInfo());
 
+        int width = static_cast<int>(input_image._encodedWidth);
+        int nRGBWidth = (width + 1) & ~1;
+
         for (int i = 0; i < nFrameReturnd; i++)
         {
             int64_t timeStamp;
             uint8_t* pFrame = m_decoder->GetFrame(&timeStamp);
-
-            rtc::scoped_refptr<webrtc::I420Buffer> i420_buffer =
-                m_buffer_pool.CreateI420Buffer(m_decoder->GetWidth(), m_decoder->GetHeight());
-
-            int result;
+            UnityRenderingExtTextureFormat format = kUnityRenderingExtFormatB8G8R8A8_SRGB;
+            int iMatrix = m_decoder->GetVideoFormatInfo().video_signal_description.matrix_coefficients;
+            if (m_decoder->GetBitDepth() == 8)
             {
-                std::unique_ptr<const ScopedProfiler> profiler;
-                if (m_profiler)
-                    profiler = m_profiler->CreateScopedProfiler(*m_marker);
-
-                result = libyuv::NV12ToI420(
-                    pFrame,
-                    m_decoder->GetDeviceFramePitch(),
-                    pFrame + m_decoder->GetHeight() * m_decoder->GetDeviceFramePitch(),
-                    m_decoder->GetDeviceFramePitch(),
-                    i420_buffer->MutableDataY(),
-                    i420_buffer->StrideY(),
-                    i420_buffer->MutableDataU(),
-                    i420_buffer->StrideU(),
-                    i420_buffer->MutableDataV(),
-                    i420_buffer->StrideV(),
-                    m_decoder->GetWidth(),
-                    m_decoder->GetHeight());
+                if (m_decoder->GetOutputFormat() == cudaVideoSurfaceFormat_YUV444)
+                    YUV444ToColor32<BGRA32>(
+                        pFrame,
+                        m_decoder->GetWidth(),
+                        reinterpret_cast<uint8_t*>(m_dpFrame),
+                        4 * nRGBWidth,
+                        m_decoder->GetWidth(),
+                        m_decoder->GetHeight(),
+                        iMatrix);
+                else // default assumed as NV12
+                    Nv12ToColor32<BGRA32>(
+                        pFrame,
+                        m_decoder->GetWidth(),
+                        reinterpret_cast<uint8_t*>(m_dpFrame),
+                        4 * nRGBWidth,
+                        m_decoder->GetWidth(),
+                        m_decoder->GetHeight(),
+                        iMatrix);
+            }
+            else
+            {
+                if (m_decoder->GetOutputFormat() == cudaVideoSurfaceFormat_YUV444_16Bit)
+                    YUV444P16ToColor32<BGRA32>(
+                        pFrame,
+                        2 * m_decoder->GetWidth(),
+                        reinterpret_cast<uint8_t*>(m_dpFrame),
+                        4 * nRGBWidth,
+                        m_decoder->GetWidth(),
+                        m_decoder->GetHeight(),
+                        iMatrix);
+                else // default assumed as P016
+                    P016ToColor32<BGRA32>(
+                        pFrame,
+                        2 * m_decoder->GetWidth(),
+                        reinterpret_cast<uint8_t*>(m_dpFrame),
+                        4 * nRGBWidth,
+                        m_decoder->GetWidth(),
+                        m_decoder->GetHeight(),
+                        iMatrix);
             }
 
-            if (result)
-            {
-                RTC_LOG(LS_INFO) << "libyuv::NV12ToI420 failed. error:" << result;
-            }
+            Size size(m_decoder->GetWidth(), m_decoder->GetHeight());
+            rtc::scoped_refptr<VideoFrame> frame = VideoFrame::WrapExternalGpuMemoryBuffer(
+                size,
+                new rtc::RefCountedObject<GpuMemoryBufferFromCuda>(m_context, m_dpFrame, size, format),
+                nullptr,
+                TimeDelta::Millis(timeStamp));
 
-            VideoFrame decoded_frame = VideoFrame::Builder()
-                                           .set_video_frame_buffer(i420_buffer)
-                                           .set_timestamp_rtp(static_cast<uint32_t>(timeStamp))
-                                           .set_color_space(color_space)
-                                           .build();
+            rtc::scoped_refptr<VideoFrameAdapter> buffer(
+                new rtc::RefCountedObject<VideoFrameAdapter>(std::move(frame)));
+
+            ::webrtc::VideoFrame decoded_frame = ::webrtc::VideoFrame::Builder()
+                                                     .set_video_frame_buffer(buffer)
+                                                     .set_timestamp_rtp(static_cast<uint32_t>(timeStamp))
+                                                     .set_color_space(color_space)
+                                                     .build();
 
             // todo: measurement decoding time
             absl::optional<int32_t> decodetime;
@@ -208,5 +255,26 @@ namespace webrtc
         return WEBRTC_VIDEO_CODEC_OK;
     }
 
+    CUresult NvDecoderImpl::AllocDeviceMemory(CUdeviceptr& ptr, size_t size)
+    {
+        CUresult result;
+        if (ptr != 0)
+        {
+            result = cuMemFree(ptr);
+            if (result != CUDA_SUCCESS)
+            {
+                RTC_LOG(LS_INFO) << "cuMemFree failed";
+                return result;
+            }
+        }
+
+        result = cuMemAlloc(&ptr, size);
+        if (result != CUDA_SUCCESS)
+        {
+            RTC_LOG(LS_INFO) << "cuMemAlloc failed";
+            return result;
+        }
+        return result;
+    }
 } // end namespace webrtc
 } // end namespace unity

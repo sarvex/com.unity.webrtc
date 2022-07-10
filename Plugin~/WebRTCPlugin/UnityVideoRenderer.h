@@ -28,7 +28,6 @@ namespace webrtc
         rtc::scoped_refptr<VideoFrameBuffer> GetFrameBuffer();
         void SetFrameBuffer(rtc::scoped_refptr<VideoFrameBuffer> buffer, int64_t timestamp);
         void SetTexture(void* texture);
-
         // used in UnityRenderingExtEventUpdateTexture
         // called on RenderThread
         void* ConvertVideoFrameToTextureAndWriteToBuffer(int width, int height, libyuv::FourCC format);

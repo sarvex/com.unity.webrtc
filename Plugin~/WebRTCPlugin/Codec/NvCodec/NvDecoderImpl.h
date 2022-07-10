@@ -6,7 +6,9 @@
 #include <common_video/include/video_frame_buffer_pool.h>
 
 #include "NvCodec.h"
+#include "NvCodecUtils.h"
 #include "NvDecoder/NvDecoder.h"
+#include "VideoFrameAdapter.h"
 
 using namespace webrtc;
 
@@ -17,6 +19,7 @@ namespace webrtc
 
     using NvDecoderInternal = ::NvDecoder;
 
+    class UnityProfilerMarkerDesc;
     class H264BitstreamParser : public ::webrtc::H264BitstreamParser
     {
     public:
@@ -40,7 +43,9 @@ namespace webrtc
         virtual DecoderInfo GetDecoderInfo() const override;
 
     private:
+        CUresult AllocDeviceMemory(CUdeviceptr& ptr, size_t size);
         CUcontext m_context;
+        CUdeviceptr m_dpFrame;
         std::unique_ptr<NvDecoderInternal> m_decoder;
         bool m_isConfiguredDecoder;
 

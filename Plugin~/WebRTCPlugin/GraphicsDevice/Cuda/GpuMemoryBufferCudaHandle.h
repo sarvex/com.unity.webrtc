@@ -1,5 +1,16 @@
 #pragma once
 
+#if defined(_WIN32)
+#include <d3d11.h>
+#include <d3d12.h>
+#endif
+
+#if defined(__linux__)
+#include <GL.h>
+#endif
+
+#include <vulkan/vulkan.h>
+
 #include <cuda.h>
 
 #include "GpuMemoryBuffer.h"
@@ -21,6 +32,19 @@ namespace webrtc
         CUdeviceptr mappedPtr;
         CUgraphicsResource resource;
         CUexternalMemory externalMemory;
+
+        static std::unique_ptr<GpuMemoryBufferCudaHandle> CreateHandle(CUcontext context, CUdeviceptr ptr);
+#if defined(_WIN32)
+        static std::unique_ptr<GpuMemoryBufferCudaHandle> CreateHandle(CUcontext context, ID3D11Resource* resource);
+        static std::unique_ptr<GpuMemoryBufferCudaHandle>
+        CreateHandle(CUcontext context, ID3D12Resource* resource, HANDLE sharedHandle, size_t memorySize);
+#endif
+        static std::unique_ptr<GpuMemoryBufferCudaHandle>
+        CreateHandle(CUcontext context, void* exportHandle, size_t memorySize, const Size& size);
+#if defined(__linux__)
+        static std::unique_ptr<GpuMemoryBufferCudaHandle>
+        CreateHandle(CUcontext context, GLuint texture, GLenum target);
+#endif
     };
 }
 }

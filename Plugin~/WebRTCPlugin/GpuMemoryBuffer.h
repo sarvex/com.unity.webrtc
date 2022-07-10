@@ -52,6 +52,28 @@ namespace webrtc
         ~GpuMemoryBufferInterface() override = default;
     };
 
+#if CUDA_PLATFORM
+    class GpuMemoryBufferFromCuda : public GpuMemoryBufferInterface
+    {
+    public:
+        GpuMemoryBufferFromCuda(CUcontext context, CUdeviceptr ptr, const Size& size, UnityRenderingExtTextureFormat format);
+        GpuMemoryBufferFromCuda(const GpuMemoryBufferFromCuda&) = delete;
+        GpuMemoryBufferFromCuda& operator=(const GpuMemoryBufferFromCuda&) = delete;
+        UnityRenderingExtTextureFormat GetFormat() const override;
+        Size GetSize() const override;
+        rtc::scoped_refptr<I420BufferInterface> ToI420() override;
+        const GpuMemoryBufferHandle* handle() const override;
+
+    protected:
+        ~GpuMemoryBufferFromCuda() override;
+
+    private:
+        UnityRenderingExtTextureFormat format_;
+        Size size_;
+        std::unique_ptr<GpuMemoryBufferHandle> handle_;
+    };
+#endif
+
     class GpuMemoryBufferFromUnity : public GpuMemoryBufferInterface
     {
     public:

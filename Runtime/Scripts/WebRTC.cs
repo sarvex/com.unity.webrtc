@@ -1385,7 +1385,7 @@ namespace Unity.WebRTC
         public static extern IntPtr CreateVideoRenderer(
             IntPtr context, DelegateVideoFrameResize callback, [MarshalAs(UnmanagedType.U1)] bool needFlip);
         [DllImport(WebRTC.Lib)]
-        public static extern uint GetVideoRendererId(IntPtr sink);
+        public static extern uint GetVideoRendererId(IntPtr renderer);
         [DllImport(WebRTC.Lib)]
         public static extern void DeleteVideoRenderer(IntPtr context, IntPtr sink);
         [DllImport(WebRTC.Lib)]

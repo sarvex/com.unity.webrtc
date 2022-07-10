@@ -10,6 +10,7 @@ namespace unity
 namespace webrtc
 {
     using namespace ::webrtc;
+
     class MetalDevice;
     class MetalGraphicsDevice : public IGraphicsDevice
     {
@@ -33,6 +34,7 @@ namespace webrtc
         bool CopyResourceFromBuffer(void* dest, rtc::scoped_refptr<VideoFrameBuffer> buffer) override;
         bool CopyToVideoFrameBuffer(rtc::scoped_refptr<::webrtc::VideoFrameBuffer>& buffer, void* texture) override;
         rtc::scoped_refptr<I420Buffer> ConvertRGBToI420(ITexture2D* tex) override;
+        rtc::scoped_refptr<VideoFrameBuffer> ConvertToBuffer(void* ptr) override;
         std::unique_ptr<GpuMemoryBufferHandle> Map(ITexture2D* texture) override { return nullptr; }
 
     private:

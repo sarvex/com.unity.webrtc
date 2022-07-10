@@ -65,6 +65,7 @@ if(iOS OR macOS)
 endif()
 
 if(Windows OR Linux)
+  enable_language(CUDA)
   find_package(CUDA REQUIRED)
   find_package(Vulkan REQUIRED)
   add_subdirectory(NvCodec)

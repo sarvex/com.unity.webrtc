@@ -10,6 +10,7 @@ if(iOS)
     "-framework AudioToolbox"
     "-framework VideoToolbox"
     "-framework Metal"
+    "-framework IOSurface"
     "-framework UIKit"
     "-framework Network"
     "-framework IOSurface"
@@ -38,6 +39,6 @@ else()
     ${AUDIO_TOOLBOX}
     ${VIDEO_TOOLBOX}
     ${METAL}
-    ${IO_SURFACE}
+    ${IOSURFACE}
   )
 endif()

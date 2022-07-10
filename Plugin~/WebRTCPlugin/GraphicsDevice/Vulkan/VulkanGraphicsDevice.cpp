@@ -127,6 +127,15 @@ namespace webrtc
         return vkQueueSubmit(queue, 1, &submitInfo, fence);
     }
 
+    ITexture2D* VulkanGraphicsDevice::CreateTexture(void* texture)
+    {
+        //UnityVulkanImage* unityVulkanImage = static_cast<UnityVulkanImage*>(texture);
+        //return VulkanTexture2D();
+        RTC_DCHECK(false);
+        return nullptr;
+    }
+
+
     // Returns null if failed
     ITexture2D* VulkanGraphicsDevice::CreateDefaultTextureV(
         const uint32_t width, const uint32_t height, UnityRenderingExtTextureFormat format)
@@ -396,7 +405,6 @@ namespace webrtc
             RTC_LOG(LS_ERROR) << "cannot get export handle";
             throw;
         }
-
         CUDA_EXTERNAL_MEMORY_HANDLE_DESC memDesc = {};
 #ifndef _WIN32
         memDesc.type = CU_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD;

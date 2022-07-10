@@ -145,7 +145,13 @@ namespace webrtc
         SAFE_CLOSE_HANDLE(m_copyResourceEventHandle)
     }
 
-    //---------------------------------------------------------------------------------------------------------------------
+    ITexture2D* D3D12GraphicsDevice::CreateTexture(void* texture)
+    {
+        ID3D12Resource* d3dResource = reinterpret_cast<ID3D12Resource*>(texture);
+        D3D12_RESOURCE_DESC desc = d3dResource->GetDesc();
+        return new D3D12Texture2D(desc.Width, desc.Height, d3dResource, 0, nullptr);
+    }
+
     ITexture2D*
     D3D12GraphicsDevice::CreateDefaultTextureV(uint32_t width, uint32_t height, UnityRenderingExtTextureFormat format)
     {
@@ -366,7 +372,7 @@ namespace webrtc
             return nullptr;
 
         D3D12Texture2D* d3d12Texure = static_cast<D3D12Texture2D*>(texture);
-
+        ID3D12Resource* resource = static_cast<ID3D12Resource*>(d3d12Texure->GetNativeTexturePtrV());
         // set context on the thread.
         cuCtxPushCurrent(GetCUcontext());
 
@@ -377,62 +383,11 @@ namespace webrtc
             throw;
         }
 
-        size_t width = d3d12Texure->GetWidth();
-        size_t height = d3d12Texure->GetHeight();
-        D3D12_RESOURCE_DESC desc = d3d12Texure->GetDesc();
-        D3D12_RESOURCE_ALLOCATION_INFO d3d12ResourceAllocationInfo;
-        d3d12ResourceAllocationInfo = m_d3d12Device->GetResourceAllocationInfo(0, 1, &desc);
+        D3D12_RESOURCE_DESC desc = resource->GetDesc();
+        D3D12_RESOURCE_ALLOCATION_INFO d3d12ResourceAllocationInfo =
+            m_d3d12Device->GetResourceAllocationInfo(0, 1, &desc);
         size_t actualSize = d3d12ResourceAllocationInfo.SizeInBytes;
-
-        CUDA_EXTERNAL_MEMORY_HANDLE_DESC memDesc = {};
-        memDesc.type = CU_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_RESOURCE;
-        memDesc.handle.win32.handle = static_cast<void*>(sharedHandle);
-        memDesc.size = actualSize;
-        memDesc.flags = CUDA_EXTERNAL_MEMORY_DEDICATED;
-
-        CUresult result;
-        CUexternalMemory externalMemory = {};
-        result = cuImportExternalMemory(&externalMemory, &memDesc);
-        if (result != CUDA_SUCCESS)
-        {
-            RTC_LOG(LS_ERROR) << "cuImportExternalMemory error";
-            throw;
-        }
-
-        CUDA_ARRAY3D_DESCRIPTOR arrayDesc = {};
-        arrayDesc.Width = width;
-        arrayDesc.Height = height;
-        arrayDesc.Depth = 0; /* CUDA 2D arrays are defined to have depth 0 */
-        arrayDesc.Format = CU_AD_FORMAT_UNSIGNED_INT32;
-        arrayDesc.NumChannels = 1;
-        arrayDesc.Flags = CUDA_ARRAY3D_SURFACE_LDST | CUDA_ARRAY3D_COLOR_ATTACHMENT;
-
-        CUDA_EXTERNAL_MEMORY_MIPMAPPED_ARRAY_DESC mipmapArrayDesc = {};
-        mipmapArrayDesc.arrayDesc = arrayDesc;
-        mipmapArrayDesc.numLevels = 1;
-
-        CUmipmappedArray mipmappedArray;
-        result = cuExternalMemoryGetMappedMipmappedArray(&mipmappedArray, externalMemory, &mipmapArrayDesc);
-        if (result != CUDA_SUCCESS)
-        {
-            RTC_LOG(LS_ERROR) << "cuExternalMemoryGetMappedMipmappedArray error";
-            throw;
-        }
-
-        CUarray array;
-        result = cuMipmappedArrayGetLevel(&array, mipmappedArray, 0);
-        if (result != CUDA_SUCCESS)
-        {
-            RTC_LOG(LS_ERROR) << "cuMipmappedArrayGetLevel error";
-            throw;
-        }
-        cuCtxPopCurrent(nullptr);
-
-        std::unique_ptr<GpuMemoryBufferCudaHandle> handle = std::make_unique<GpuMemoryBufferCudaHandle>();
-        handle->context = GetCUcontext();
-        handle->mappedArray = array;
-        handle->externalMemory = externalMemory;
-        return std::move(handle);
+        return GpuMemoryBufferCudaHandle::CreateHandle(GetCUcontext(), resource, sharedHandle, actualSize);
     }
 
 } // end namespace webrtc

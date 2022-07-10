@@ -1,14 +1,14 @@
 #pragma once
 
 #include <IUnityGraphics.h>
-
-#include "api/test/frame_generator_interface.h"
+#include <api/test/frame_generator_interface.h>
 #include <api/video_codecs/h264_profile_level_id.h>
 #include <api/video_codecs/video_codec.h>
 #include <api/video_codecs/video_decoder.h>
 #include <api/video_codecs/video_encoder.h>
 #include <media/base/codec.h>
 #include <modules/video_coding/include/video_codec_interface.h>
+
 #include "rtc_base/checks.h"
 #include "rtc_base/event.h"
 #include "rtc_base/synchronization/mutex.h"
@@ -68,7 +68,7 @@ namespace webrtc
         void SetUp() override;
         void TearDown() override;
 
-        VideoFrame NextInputFrame();
+        ::webrtc::VideoFrame NextInputFrame();
         void ChangeFrameResolution(size_t width, size_t height);
 
         // Helper method for waiting a single encoded frame.
@@ -77,7 +77,7 @@ namespace webrtc
         WaitForEncodedFrames(std::vector<EncodedImage>* frames, std::vector<CodecSpecificInfo>* codec_specific_info);
 
         // Helper method for waiting a single decoded frame.
-        bool WaitForDecodedFrame(std::unique_ptr<VideoFrame>* frame, absl::optional<uint8_t>* qp);
+        bool WaitForDecodedFrame(std::unique_ptr<::webrtc::VideoFrame>* frame, absl::optional<uint8_t>* qp);
 
     protected:
         class FakeEncodedImageCallback : public EncodedImageCallback
@@ -99,13 +99,15 @@ namespace webrtc
                 : _test(test)
             {
             }
-            int32_t Decoded(VideoFrame& decodedImage) override
+            int32_t Decoded(::webrtc::VideoFrame& decodedImage) override
             {
                 RTC_CHECK_NOTREACHED();
                 return -1;
             }
-            void
-            Decoded(VideoFrame& frame, absl::optional<int32_t> decode_time_ms, absl::optional<uint8_t> qp) override;
+            void Decoded(
+                ::webrtc::VideoFrame& decodedImage,
+                absl::optional<int32_t> decode_time_ms,
+                absl::optional<uint8_t> qp) override;
 
         private:
             VideoCodecTest* _test;
@@ -122,7 +124,7 @@ namespace webrtc
         Mutex encodedFrameSection_;
         Mutex decodedFrameSection_;
         std::vector<EncodedImage> encodedFrames_;
-        absl::optional<VideoFrame> decodedFrame_;
+        absl::optional<::webrtc::VideoFrame> decodedFrame_;
         std::vector<CodecSpecificInfo> codecSpecificInfos_;
         absl::optional<uint8_t> decodedQp_;
         FakeEncodedImageCallback encodedImageCallback_;

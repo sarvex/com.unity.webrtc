@@ -10,7 +10,7 @@
 */
 
 #include <cuda_runtime.h>
-#include "NvCodecUtils.h"
+#include <stdint.h>
 
 /*
 * CRC32 lookup table

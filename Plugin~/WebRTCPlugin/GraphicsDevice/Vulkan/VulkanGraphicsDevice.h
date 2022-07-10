@@ -37,6 +37,7 @@ namespace webrtc
         bool InitV() override;
         void ShutdownV() override;
         inline void* GetEncodeDevicePtrV() override;
+        ITexture2D* CreateTexture(void* texture);
         ITexture2D* CreateDefaultTextureV(
             const uint32_t w, const uint32_t h, UnityRenderingExtTextureFormat textureFormat) override;
         rtc::scoped_refptr<::webrtc::VideoFrameBuffer>

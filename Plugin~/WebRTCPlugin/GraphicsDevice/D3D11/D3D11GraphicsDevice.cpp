@@ -41,11 +41,17 @@ namespace webrtc
         return true;
     }
 
-    //---------------------------------------------------------------------------------------------------------------------
-
     void D3D11GraphicsDevice::ShutdownV() { m_cudaContext.Shutdown(); }
 
-    //---------------------------------------------------------------------------------------------------------------------
+    ITexture2D* D3D11GraphicsDevice::CreateTexture(void* texture)
+    {
+        ID3D11Texture2D* d3dTexture = static_cast<ID3D11Texture2D*>(texture);
+
+        D3D11_TEXTURE2D_DESC desc = {};
+        d3dTexture->GetDesc(&desc);
+        return new D3D11Texture2D(desc.Width, desc.Height, d3dTexture, true);
+    }
+
     ITexture2D*
     D3D11GraphicsDevice::CreateDefaultTextureV(uint32_t width, uint32_t height, UnityRenderingExtTextureFormat format)
     {
@@ -97,7 +103,7 @@ namespace webrtc
     bool D3D11GraphicsDevice::CopyResourceV(ITexture2D* dest, ITexture2D* src)
     {
         ID3D11Resource* nativeDest = reinterpret_cast<ID3D11Resource*>(dest->GetNativeTexturePtrV());
-        ID3D11Resource* nativeSrc = reinterpret_cast<ID3D11Texture2D*>(src->GetNativeTexturePtrV());
+        ID3D11Resource* nativeSrc = reinterpret_cast<ID3D11Resource*>(src->GetNativeTexturePtrV());
         if (nativeSrc == nativeDest)
             return false;
         if (nativeSrc == nullptr || nativeDest == nullptr)
@@ -205,45 +211,34 @@ namespace webrtc
         return i420_buffer;
     }
 
+    class NativeFrameBuffer : webrtc::VideoFrameBuffer
+    {
+    public:
+        NativeFrameBuffer(ITexture2D* texture) : texture_(texture) { }
+    private:
+        ITexture2D* texture_;
+    };
+
+    rtc::scoped_refptr<::webrtc::VideoFrameBuffer> D3D11GraphicsDevice::ConvertToBuffer(void* ptr)
+    {
+        ID3D11Texture2D* d3dTexture = static_cast<ID3D11Texture2D*>(ptr);
+
+        D3D11_TEXTURE2D_DESC desc = {};
+        d3dTexture->GetDesc(&desc);
+
+        // todo(kazuki):: cache texture
+        D3D11Texture2D* texture = new D3D11Texture2D(desc.Width, desc.Height, d3dTexture, true);
+        return rtc::make_ref_counted<NativeFrameBuffer>(texture);
+    }
+
     std::unique_ptr<GpuMemoryBufferHandle> D3D11GraphicsDevice::Map(ITexture2D* texture)
     {
         if (!IsCudaSupport())
             return nullptr;
 
-        CUgraphicsResource resource;
-        ID3D11Resource* pResource = static_cast<ID3D11Resource*>(texture->GetNativeTexturePtrV());
+        ID3D11Resource* resource = static_cast<ID3D11Resource*>(texture->GetNativeTexturePtrV());
 
-        // set context on the thread.
-        cuCtxPushCurrent(GetCUcontext());
-
-        CUresult result =
-            cuGraphicsD3D11RegisterResource(&resource, pResource, CU_GRAPHICS_REGISTER_FLAGS_SURFACE_LDST);
-        if (result != CUDA_SUCCESS)
-        {
-            RTC_LOG(LS_ERROR) << "cuGraphicsD3D11RegisterResource";
-            throw;
-        }
-        result = cuGraphicsMapResources(1, &resource, nullptr);
-        if (result != CUDA_SUCCESS)
-        {
-            RTC_LOG(LS_ERROR) << "cuGraphicsMapResources";
-            throw;
-        }
-
-        CUarray mappedArray;
-        result = cuGraphicsSubResourceGetMappedArray(&mappedArray, resource, 0, 0);
-        if (result != CUDA_SUCCESS)
-        {
-            RTC_LOG(LS_ERROR) << "cuGraphicsSubResourceGetMappedArray";
-            throw;
-        }
-        cuCtxPopCurrent(nullptr);
-
-        std::unique_ptr<GpuMemoryBufferCudaHandle> handle = std::make_unique<GpuMemoryBufferCudaHandle>();
-        handle->context = GetCUcontext();
-        handle->mappedArray = mappedArray;
-        handle->resource = resource;
-        return std::move(handle);
+        return GpuMemoryBufferCudaHandle::CreateHandle(GetCUcontext(), resource);
     }
 
 } // end namespace webrtc

@@ -122,7 +122,7 @@ static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType ev
     case kUnityGfxDeviceEventShutdown:
     {
         // Release buffers before graphics device because buffers depends on the device.
-        s_bufferPool = nullptr;
+        //s_bufferPool = nullptr;
 
         s_mapVideoRenderer.clear();
 
@@ -265,13 +265,10 @@ static void UNITY_INTERFACE_API OnRenderEvent(int eventID, void* data)
         }
         source->OnFrameCaptured(std::move(buffer), timestamp);
     }
-    // s_bufferPool->ReleaseStaleBuffers(timestamp);
 }
 
 static void UNITY_INTERFACE_API OnReleaseBuffers(int eventID, void* data)
 {
-    // Release all buffers.
-    // s_bufferPool->ReleaseStaleBuffers(Timestamp::PlusInfinity());
 }
 
 extern "C" UnityRenderingEventAndData UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API GetRenderEventFunc(Context* context)

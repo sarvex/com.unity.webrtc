@@ -3,6 +3,10 @@
 #include "GpuMemoryBuffer.h"
 #include "GraphicsDevice/ITexture2D.h"
 
+#if CUDA_PLATFORM
+#include "GraphicsDevice/Cuda/GpuMemoryBufferCudaHandle.h"
+#endif
+
 namespace unity
 {
 namespace webrtc
@@ -10,8 +14,28 @@ namespace webrtc
     GpuMemoryBufferHandle::GpuMemoryBufferHandle() { }
     GpuMemoryBufferHandle::GpuMemoryBufferHandle(GpuMemoryBufferHandle&& other) = default;
     GpuMemoryBufferHandle& GpuMemoryBufferHandle::operator=(GpuMemoryBufferHandle&& other) = default;
+    GpuMemoryBufferHandle::~GpuMemoryBufferHandle() = default;
 
-    GpuMemoryBufferHandle::~GpuMemoryBufferHandle() { }
+#if CUDA_PLATFORM
+    GpuMemoryBufferFromCuda::GpuMemoryBufferFromCuda(
+        CUcontext context, CUdeviceptr ptr, const Size& size, UnityRenderingExtTextureFormat format)
+        : size_(size)
+        , handle_(GpuMemoryBufferCudaHandle::CreateHandle(context, ptr))
+        , format_(format)
+    {
+    }
+
+    GpuMemoryBufferFromCuda::~GpuMemoryBufferFromCuda() = default;
+
+    UnityRenderingExtTextureFormat GpuMemoryBufferFromCuda::GetFormat() const { return format_; }
+    Size GpuMemoryBufferFromCuda::GetSize() const { return size_; }
+    rtc::scoped_refptr<I420BufferInterface> GpuMemoryBufferFromCuda::ToI420()
+    {
+        assert("This is not supported");
+        throw;
+    }
+    const GpuMemoryBufferHandle* GpuMemoryBufferFromCuda::handle() const { return handle_.get(); }
+#endif
 
     AHardwareBufferHandle::AHardwareBufferHandle() : buffer(nullptr) { }
     AHardwareBufferHandle::AHardwareBufferHandle(AHardwareBufferHandle&& other) = default;
@@ -46,7 +70,7 @@ namespace webrtc
         CopyBuffer(ptr);
     }
 
-    GpuMemoryBufferFromUnity::~GpuMemoryBufferFromUnity() { }
+    GpuMemoryBufferFromUnity::~GpuMemoryBufferFromUnity() = default;
 
     void GpuMemoryBufferFromUnity::ResetSync()
     {

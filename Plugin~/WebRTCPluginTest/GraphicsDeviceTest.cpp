@@ -31,6 +31,18 @@ namespace webrtc
 
     TEST_P(GraphicsDeviceTest, GraphicsDeviceIsNotNull) { EXPECT_NE(nullptr, device()); }
 
+    TEST_P(GraphicsDeviceTest, CreateTexture)
+    {
+        const auto width = 256;
+        const auto height = 256;
+        const std::unique_ptr<ITexture2D> tex1(device()->CreateDefaultTextureV(width, height, format()));
+        EXPECT_TRUE(device()->WaitIdleForTest());
+        EXPECT_TRUE(tex1->IsSize(width, height));
+//        void* ptr = tex1->GetNativeTexturePtrV();
+//        const std::unique_ptr<ITexture2D> tex2(device()->CreateTexture(ptr));
+//        EXPECT_TRUE(tex2->IsSize(width, height));
+    }
+
     TEST_P(GraphicsDeviceTest, CreateDefaultTextureV)
     {
         const auto width = 256;
@@ -113,6 +125,35 @@ namespace webrtc
         EXPECT_EQ(width, frameBuffer->width());
         EXPECT_EQ(height, frameBuffer->height());
     }
+
+    TEST_P(GraphicsDeviceTest, ConvertToBuffer)
+    {
+        const uint32_t width = 256;
+        const uint32_t height = 256;
+        const std::unique_ptr<ITexture2D> src(device()->CreateDefaultTextureV(width, height, format()));
+        const std::unique_ptr<ITexture2D> dst(device()->CreateCPUReadTextureV(width, height, format()));
+        EXPECT_TRUE(device()->WaitIdleForTest());
+        const auto frameBuffer = device()->ConvertToBuffer(src->GetNativeTexturePtrV());
+        EXPECT_TRUE(device()->WaitIdleForTest());
+        EXPECT_NE(nullptr, frameBuffer);
+        EXPECT_EQ(width, frameBuffer->width());
+        EXPECT_EQ(height, frameBuffer->height());
+    }
+
+    TEST_P(GraphicsDeviceTest, CopyResourceFromBuffer)
+    {
+        const uint32_t width = 256;
+        const uint32_t height = 256;
+        const std::unique_ptr<ITexture2D> src(device()->CreateDefaultTextureV(width, height, format()));
+        std::unique_ptr<ITexture2D> dst(device()->CreateCPUReadTextureV(width, height, format()));
+        EXPECT_TRUE(device()->WaitIdleForTest());
+        const auto buffer = device()->ConvertToBuffer(src->GetNativeTexturePtrV());
+        EXPECT_TRUE(buffer);
+        EXPECT_TRUE(device()->WaitIdleForTest());
+        EXPECT_TRUE(device()->CopyResourceFromBuffer(dst.get(), buffer));
+        EXPECT_TRUE(device()->WaitIdleForTest());
+    }
+
 
     TEST_P(GraphicsDeviceTest, Map)
     {
