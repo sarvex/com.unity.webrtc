@@ -46,7 +46,6 @@ namespace webrtc
     ITexture2D*
     D3D11GraphicsDevice::CreateDefaultTextureV(uint32_t width, uint32_t height, UnityRenderingExtTextureFormat format)
     {
-
         ID3D11Texture2D* texture = nullptr;
         D3D11_TEXTURE2D_DESC desc = {};
         desc.Width = width;
@@ -220,14 +219,15 @@ namespace webrtc
         return rtc::make_ref_counted<NativeFrameBuffer>(desc.Width, desc.Height, format, this);
     }
 
-    std::unique_ptr<GpuMemoryBufferHandle> D3D11GraphicsDevice::Map(ITexture2D* texture)
+    std::unique_ptr<GpuMemoryBufferHandle>
+    D3D11GraphicsDevice::Map(ITexture2D* texture, GpuMemoryBufferHandle::AccessMode mode)
     {
         if (!IsCudaSupport())
             return nullptr;
 
         ID3D11Resource* resource = static_cast<ID3D11Resource*>(texture->GetNativeTexturePtrV());
 
-        return GpuMemoryBufferCudaHandle::CreateHandle(GetCUcontext(), resource);
+        return GpuMemoryBufferCudaHandle::CreateHandle(GetCUcontext(), resource, mode);
     }
 
 } // end namespace webrtc

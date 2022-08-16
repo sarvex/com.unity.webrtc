@@ -57,7 +57,7 @@ namespace webrtc
         cuCtxPopCurrent(nullptr);
     }
     std::unique_ptr<GpuMemoryBufferCudaHandle>
-    GpuMemoryBufferCudaHandle::CreateHandle(CUcontext context, CUdeviceptr ptr)
+    GpuMemoryBufferCudaHandle::CreateHandle(CUcontext context, CUdeviceptr ptr, AccessMode mode)
     {
         std::unique_ptr<GpuMemoryBufferCudaHandle> handle = std::make_unique<GpuMemoryBufferCudaHandle>();
         handle->context = context;
@@ -68,23 +68,50 @@ namespace webrtc
 
 #if defined(_WIN32)
     std::unique_ptr<GpuMemoryBufferCudaHandle>
-    GpuMemoryBufferCudaHandle::CreateHandle(CUcontext context, ID3D11Resource* resource)
+    GpuMemoryBufferCudaHandle::CreateHandle(CUcontext context, ID3D11Resource* resource, AccessMode mode)
     {
         // set context on the thread.
         cuCtxPushCurrent(context);
 
-        CUgraphicsResource cuResource;
-        CUresult result =
-            cuGraphicsD3D11RegisterResource(&cuResource, resource, CU_GRAPHICS_REGISTER_FLAGS_SURFACE_LDST);
-        if (result != CUDA_SUCCESS)
+        CUresult result;
+        CUgraphicsResource cuResource = 0;
+
+        switch (mode)
         {
-            RTC_LOG(LS_ERROR) << "cuGraphicsD3D11RegisterResource";
-            return nullptr;
+        case AccessMode::kRead:
+            result = cuGraphicsD3D11RegisterResource(&cuResource, resource, CU_GRAPHICS_REGISTER_FLAGS_NONE);
+            if (result != CUDA_SUCCESS)
+            {
+                RTC_LOG(LS_ERROR) << "cuGraphicsD3D11RegisterResource failed. result" << result;
+                return nullptr;
+            }
+            result = cuGraphicsResourceSetMapFlags(cuResource, CU_GRAPHICS_MAP_RESOURCE_FLAGS_READ_ONLY);
+            if (result != CUDA_SUCCESS)
+            {
+                RTC_LOG(LS_ERROR) << "cuGraphicsResourceSetMapFlags failed. result" << result;
+                return nullptr;
+            }
+            break;
+        case AccessMode::kWrite:
+            result = cuGraphicsD3D11RegisterResource(&cuResource, resource, CU_GRAPHICS_REGISTER_FLAGS_NONE);
+            if (result != CUDA_SUCCESS)
+            {
+                RTC_LOG(LS_ERROR) << "cuGraphicsD3D11RegisterResource failed. result" << result;
+                return nullptr;
+            }
+            result = cuGraphicsResourceSetMapFlags(cuResource, CU_GRAPHICS_MAP_RESOURCE_FLAGS_WRITE_DISCARD);
+            if (result != CUDA_SUCCESS)
+            {
+                RTC_LOG(LS_ERROR) << "cuGraphicsResourceSetMapFlags failed. result" << result;
+                return nullptr;
+            }
+            break;
         }
+
         result = cuGraphicsMapResources(1, &cuResource, nullptr);
         if (result != CUDA_SUCCESS)
         {
-            RTC_LOG(LS_ERROR) << "cuGraphicsMapResources";
+            RTC_LOG(LS_ERROR) << "cuGraphicsMapResources failed. result" << result;
             return nullptr;
         }
 
@@ -92,7 +119,7 @@ namespace webrtc
         result = cuGraphicsSubResourceGetMappedArray(&mappedArray, cuResource, 0, 0);
         if (result != CUDA_SUCCESS)
         {
-            RTC_LOG(LS_ERROR) << "cuGraphicsSubResourceGetMappedArray";
+            RTC_LOG(LS_ERROR) << "cuGraphicsSubResourceGetMappedArray failed. result" << result;
             return nullptr;
         }
         cuCtxPopCurrent(nullptr);
@@ -105,7 +132,7 @@ namespace webrtc
     }
 
     std::unique_ptr<GpuMemoryBufferCudaHandle> GpuMemoryBufferCudaHandle::CreateHandle(
-        CUcontext context, ID3D12Resource* resource, HANDLE sharedHandle, size_t memorySize)
+        CUcontext context, ID3D12Resource* resource, HANDLE sharedHandle, size_t memorySize, AccessMode mode)
     {
         // set context on the thread.
         cuCtxPushCurrent(context);
@@ -165,8 +192,8 @@ namespace webrtc
     }
 #endif
 
-    std::unique_ptr<GpuMemoryBufferCudaHandle>
-    GpuMemoryBufferCudaHandle::CreateHandle(CUcontext context, void* exportHandle, size_t memorySize, const Size& size)
+    std::unique_ptr<GpuMemoryBufferCudaHandle> GpuMemoryBufferCudaHandle::CreateHandle(
+        CUcontext context, void* exportHandle, size_t memorySize, const Size& size, AccessMode mode)
     {
         // set context on the thread.
         cuCtxPushCurrent(context);

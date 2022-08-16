@@ -60,8 +60,17 @@ namespace webrtc
 #if UNITY_OSX || UNITY_IOS
 #else
         NativeFrameBuffer* nativeFrameBuffer = static_cast<NativeFrameBuffer*>(buffer.get());
-        auto handle = nativeFrameBuffer->handle();
-        ASSERT_TRUE(handle);
+
+        // return nullptr before mapping
+        ASSERT_FALSE(nativeFrameBuffer->handle());
+
+        // return handle after mapping
+        nativeFrameBuffer->Map(GpuMemoryBufferHandle::AccessMode::kRead);
+        ASSERT_TRUE(nativeFrameBuffer->handle());
+
+        // return nullptr after unmapping
+        nativeFrameBuffer->Unmap();
+        ASSERT_FALSE(nativeFrameBuffer->handle());
 #endif
     }
 

@@ -2,6 +2,7 @@
 
 #include "GpuMemoryBuffer.h"
 #include "GraphicsDevice/ITexture2D.h"
+#include "GraphicsDevice/IGraphicsDevice.h"
 
 #if CUDA_PLATFORM
 #include "GraphicsDevice/Cuda/GpuMemoryBufferCudaHandle.h"
@@ -18,9 +19,13 @@ namespace webrtc
 
 #if CUDA_PLATFORM
     GpuMemoryBufferFromCuda::GpuMemoryBufferFromCuda(
-        CUcontext context, CUdeviceptr ptr, const Size& size, UnityRenderingExtTextureFormat format)
+        CUcontext context,
+        CUdeviceptr ptr,
+        const Size& size,
+        UnityRenderingExtTextureFormat format,
+        GpuMemoryBufferHandle::AccessMode mode)
         : size_(size)
-        , handle_(GpuMemoryBufferCudaHandle::CreateHandle(context, ptr))
+        , handle_(GpuMemoryBufferCudaHandle::CreateHandle(context, ptr, mode))
         , format_(format)
     {
     }
@@ -46,7 +51,7 @@ namespace webrtc
 #endif
 
     GpuMemoryBufferFromUnity::GpuMemoryBufferFromUnity(
-        IGraphicsDevice* device, NativeTexPtr ptr, const Size& size, UnityRenderingExtTextureFormat format)
+        IGraphicsDevice* device, void* ptr, const Size& size, UnityRenderingExtTextureFormat format, GpuMemoryBufferHandle::AccessMode mode)
         : device_(device)
         , format_(format)
         , size_(size)
@@ -65,7 +70,7 @@ namespace webrtc
         {
             // IGraphicsDevice::Map method is too heavy and stop the graphics process,
             // so must not call this method on the worker thread instead of the render thread.
-            handle_ = device_->Map(texture_.get());
+            handle_ = device_->Map(texture_.get(), mode);
         }
 #endif
         CopyBuffer(ptr);
@@ -85,7 +90,7 @@ namespace webrtc
         }
     }
 
-    void GpuMemoryBufferFromUnity::CopyBuffer(NativeTexPtr ptr)
+    void GpuMemoryBufferFromUnity::CopyBuffer(void* ptr)
     {
         // One texture cannot map CUDA memory and CPU memory simultaneously.
         // Believe there is still room for improvement.

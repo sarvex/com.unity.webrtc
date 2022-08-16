@@ -9,6 +9,7 @@
 #include "GraphicsDevice/D3D11/D3D11Texture2D.h"
 #include "GraphicsDevice/GraphicsUtility.h"
 #include "NvCodecUtils.h"
+#include "NativeFrameBuffer.h"
 
 // nonstandard extension used : class rvalue used as lvalue
 #pragma clang diagnostic ignored "-Wlanguage-extension-token"
@@ -145,20 +146,17 @@ namespace webrtc
         SAFE_CLOSE_HANDLE(m_copyResourceEventHandle)
     }
 
-    //ITexture2D* D3D12GraphicsDevice::CreateTexture(void* texture)
-    //{
-    //    ID3D12Resource* d3dResource = reinterpret_cast<ID3D12Resource*>(texture);
-    //    D3D12_RESOURCE_DESC desc = d3dResource->GetDesc();
-    //    return new D3D12Texture2D(desc.Width, desc.Height, d3dResource, 0, nullptr);
-    //}
-
     ITexture2D*
     D3D12GraphicsDevice::CreateDefaultTextureV(uint32_t width, uint32_t height, UnityRenderingExtTextureFormat format)
     {
         return CreateSharedD3D12Texture(width, height, format);
     }
 
-    //---------------------------------------------------------------------------------------------------------------------
+     rtc::scoped_refptr<::webrtc::VideoFrameBuffer> D3D12GraphicsDevice::CreateVideoFrameBuffer(
+        uint32_t width, uint32_t height, UnityRenderingExtTextureFormat textureFormat)
+    {
+        return rtc::make_ref_counted<NativeFrameBuffer>(width, height, textureFormat, this);
+    }
 
     bool D3D12GraphicsDevice::CopyResourceV(ITexture2D* dest, ITexture2D* src)
     {
@@ -366,7 +364,8 @@ namespace webrtc
         return i420_buffer;
     }
 
-    std::unique_ptr<GpuMemoryBufferHandle> D3D12GraphicsDevice::Map(ITexture2D* texture)
+    std::unique_ptr<GpuMemoryBufferHandle>
+    D3D12GraphicsDevice::Map(ITexture2D* texture, GpuMemoryBufferHandle::AccessMode mode)
     {
         if (!IsCudaSupport())
             return nullptr;
@@ -387,7 +386,7 @@ namespace webrtc
         D3D12_RESOURCE_ALLOCATION_INFO d3d12ResourceAllocationInfo =
             m_d3d12Device->GetResourceAllocationInfo(0, 1, &desc);
         size_t actualSize = d3d12ResourceAllocationInfo.SizeInBytes;
-        return GpuMemoryBufferCudaHandle::CreateHandle(GetCUcontext(), resource, sharedHandle, actualSize);
+        return GpuMemoryBufferCudaHandle::CreateHandle(GetCUcontext(), resource, sharedHandle, actualSize, mode);
     }
 
 } // end namespace webrtc

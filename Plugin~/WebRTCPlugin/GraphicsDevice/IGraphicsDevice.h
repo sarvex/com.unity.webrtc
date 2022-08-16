@@ -8,6 +8,7 @@
 #include "PlatformBase.h"
 #include "ProfilerMarkerFactory.h"
 #include "ScopedProfiler.h"
+#include "GpuMemoryBuffer.h"
 
 #if CUDA_PLATFORM
 #include "Cuda/ICudaDevice.h"
@@ -23,7 +24,6 @@ namespace webrtc
 {
     using NativeTexPtr = void*;
     class ITexture2D;
-    struct GpuMemoryBufferHandle;
     class ProfilerMarkerFactory;
     class IGraphicsDevice
 #if CUDA_PLATFORM
@@ -57,7 +57,8 @@ namespace webrtc
         }
 
         virtual UnityGfxRenderer GetGfxRenderer() const { return m_gfxRenderer; }
-        virtual std::unique_ptr<GpuMemoryBufferHandle> Map(ITexture2D* texture) = 0;
+        virtual std::unique_ptr<GpuMemoryBufferHandle>
+        Map(ITexture2D* texture, GpuMemoryBufferHandle::AccessMode mode) = 0;
         virtual bool WaitSync(const ITexture2D* texture, uint64_t nsTimeout = 0) { return true; }
         virtual bool ResetSync(const ITexture2D* texture) { return true; }
         virtual bool WaitIdleForTest() { return true; }

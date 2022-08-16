@@ -5,7 +5,7 @@
 #include <common_video/include/video_frame_buffer.h>
 #include <rtc_base/ref_counted_object.h>
 
-#include "GraphicsDevice/GraphicsDevice.h"
+//#include "GraphicsDevice/GraphicsDevice.h"
 #include "IUnityRenderingExtensions.h"
 #include "PlatformBase.h"
 #include "Size.h"
@@ -22,6 +22,12 @@ namespace webrtc
 
     struct GpuMemoryBufferHandle
     {
+        enum class AccessMode
+        {
+            kRead,
+            kWrite
+        };
+
         GpuMemoryBufferHandle();
         GpuMemoryBufferHandle(GpuMemoryBufferHandle&& other);
         GpuMemoryBufferHandle& operator=(GpuMemoryBufferHandle&& other);
@@ -58,7 +64,12 @@ namespace webrtc
     class GpuMemoryBufferFromCuda : public GpuMemoryBufferInterface
     {
     public:
-        GpuMemoryBufferFromCuda(CUcontext context, CUdeviceptr ptr, const Size& size, UnityRenderingExtTextureFormat format);
+        GpuMemoryBufferFromCuda(
+            CUcontext context,
+            CUdeviceptr ptr,
+            const Size& size,
+            UnityRenderingExtTextureFormat format,
+            GpuMemoryBufferHandle::AccessMode mode);
         GpuMemoryBufferFromCuda(const GpuMemoryBufferFromCuda&) = delete;
         GpuMemoryBufferFromCuda& operator=(const GpuMemoryBufferFromCuda&) = delete;
         UnityRenderingExtTextureFormat GetFormat() const override;
@@ -76,16 +87,21 @@ namespace webrtc
     };
 #endif
 
+    class IGraphicsDevice;
     class GpuMemoryBufferFromUnity : public GpuMemoryBufferInterface
     {
     public:
         GpuMemoryBufferFromUnity(
-            IGraphicsDevice* device, NativeTexPtr ptr, const Size& size, UnityRenderingExtTextureFormat format);
+            IGraphicsDevice* device,
+            void* ptr,
+            const Size& size,
+            UnityRenderingExtTextureFormat format,
+            GpuMemoryBufferHandle::AccessMode mode);
         GpuMemoryBufferFromUnity(const GpuMemoryBufferFromUnity&) = delete;
         GpuMemoryBufferFromUnity& operator=(const GpuMemoryBufferFromUnity&) = delete;
 
         void ResetSync();
-        void CopyBuffer(NativeTexPtr ptr);
+        void CopyBuffer(void* ptr);
         UnityRenderingExtTextureFormat GetFormat() const override;
         Size GetSize() const override;
         rtc::scoped_refptr<I420BufferInterface> ToI420() override;

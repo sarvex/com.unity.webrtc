@@ -114,6 +114,76 @@ namespace webrtc
         return WEBRTC_VIDEO_CODEC_OK;
     }
 
+
+    CUresult AllocDeviceMemory(CUcontext cuContext, CUdeviceptr& ptr, size_t size)
+    {
+        CUresult result;
+        result = cuCtxPushCurrent(cuContext);
+        if (result != CUDA_SUCCESS)
+        {
+            RTC_LOG(LS_INFO) << "cuCtxPushCurrent failed. result=" << result;
+            return result;
+        }
+
+        if (ptr != 0)
+        {
+            result = cuMemFree(ptr);
+            if (result != CUDA_SUCCESS)
+            {
+                RTC_LOG(LS_INFO) << "cuMemFree failed. result=" << result;
+                return result;
+            }
+        }
+
+        result = cuMemAlloc(&ptr, size);
+        if (result != CUDA_SUCCESS)
+        {
+            RTC_LOG(LS_INFO) << "cuMemAlloc failed. result=" << result;
+            return result;
+        }
+        result = cuCtxPopCurrent(NULL);
+        if (result != CUDA_SUCCESS)
+        {
+            RTC_LOG(LS_INFO) << "cuCtxPopCurrent failed. result=" << result;
+            return result;
+        }
+        return result;
+    }
+
+    CUresult
+    CopyDeviceFrame(CUcontext cuContext, CUarray dstArray, CUdeviceptr dpBgra, int nWidth, int nHeight, int nPitch)
+    {
+        CUresult result;
+        result = cuCtxPushCurrent(cuContext);
+        if (result != CUDA_SUCCESS)
+        {
+            RTC_LOG(LS_INFO) << "cuCtxPushCurrent failed. result=" << result;
+            return result;
+        }
+        CUDA_MEMCPY2D m = { 0 };
+        m.srcMemoryType = CU_MEMORYTYPE_DEVICE;
+        m.srcDevice = dpBgra;
+        m.srcPitch = nPitch ? nPitch : nWidth * 4;
+        m.dstMemoryType = CU_MEMORYTYPE_ARRAY;
+        m.dstArray = dstArray;
+        m.WidthInBytes = nWidth * 4;
+        m.Height = nHeight;
+        result = cuMemcpy2D(&m);
+        if (result != CUDA_SUCCESS)
+        {
+            RTC_LOG(LS_INFO) << "cuMemcpy2D failed. result=" << result;
+            return result;
+        }
+
+        result = cuCtxPopCurrent(NULL);
+        if (result != CUDA_SUCCESS)
+        {
+            RTC_LOG(LS_INFO) << "cuCtxPopCurrent failed. result=" << result;
+            return result;
+        }
+        return result;
+    }
+
     int32_t NvDecoderImpl::Decode(const EncodedImage& input_image, bool missing_frames, int64_t render_time_ms)
     {
         CUcontext current;
@@ -148,14 +218,14 @@ namespace webrtc
                 sps.value().height != static_cast<uint32_t>(m_decoder->GetHeight()))
             {
                 m_decoder->setReconfigParams(nullptr, nullptr);
-                CUresult result = AllocDeviceMemory(m_dpFrame, sps.value().width * sps.value().height * 4);
+                CUresult result = AllocDeviceMemory(current, m_dpFrame, sps.value().width * sps.value().height * 4);
                 if (result != CUDA_SUCCESS)
                     return WEBRTC_VIDEO_CODEC_ERR_PARAMETER;
             }
         }
         else
         {
-            CUresult result = AllocDeviceMemory(m_dpFrame, sps.value().width * sps.value().height * 4);
+            CUresult result = AllocDeviceMemory(current, m_dpFrame, sps.value().width * sps.value().height * 4);
             if (result != CUDA_SUCCESS)
                 return WEBRTC_VIDEO_CODEC_ERR_PARAMETER;
         }
@@ -189,7 +259,7 @@ namespace webrtc
         {
             int64_t timeStamp;
             uint8_t* pFrame = m_decoder->GetFrame(&timeStamp);
-            UnityRenderingExtTextureFormat format = kUnityRenderingExtFormatB8G8R8A8_SRGB;
+            UnityRenderingExtTextureFormat format = kUnityRenderingExtFormatB8G8R8A8_UNorm;
             int iMatrix = m_decoder->GetVideoFormatInfo().video_signal_description.matrix_coefficients;
             if (m_decoder->GetBitDepth() == 8)
             {
@@ -237,15 +307,20 @@ namespace webrtc
             rtc::scoped_refptr<VideoFrameBuffer> buffer =
                 m_buffer_pool.Create(m_decoder->GetWidth(), m_decoder->GetHeight(), format);
             NativeFrameBuffer* nativeFrameBuffer = static_cast<NativeFrameBuffer*>(buffer.get());
-            const GpuMemoryBufferCudaHandle* handle =
-                static_cast<const GpuMemoryBufferCudaHandle*>(nativeFrameBuffer->handle());
 
-            // copy CUDA devicePtr to CUDA array
-            size_t size = 4 * nRGBWidth * m_decoder->GetWidth() * m_decoder->GetHeight();
-            CUresult result = cuMemcpyDtoA(handle->mappedArray, 0, m_dpFrame, size);
+            auto handle = nativeFrameBuffer->handle();
+            if (!handle)
+            {
+                nativeFrameBuffer->Map(GpuMemoryBufferHandle::AccessMode::kWrite);
+                handle = nativeFrameBuffer->handle();
+            }
+            const GpuMemoryBufferCudaHandle* cudaHandle =
+                static_cast<const GpuMemoryBufferCudaHandle*>(handle);
+            CUresult result = CopyDeviceFrame(
+                current, cudaHandle->mappedArray, m_dpFrame, m_decoder->GetWidth(), m_decoder->GetHeight(), 0);
             if (result != CUDA_SUCCESS)
             {
-                RTC_LOG(LS_INFO) << "cuMemcpyDtoA failed. result=" << result;
+                RTC_LOG(LS_INFO) << "CopyDeviceFrame failed. result=" << result;
                 return WEBRTC_VIDEO_CODEC_ERR_PARAMETER;
             }
 
@@ -263,26 +338,5 @@ namespace webrtc
         return WEBRTC_VIDEO_CODEC_OK;
     }
 
-    CUresult NvDecoderImpl::AllocDeviceMemory(CUdeviceptr& ptr, size_t size)
-    {
-        CUresult result;
-        if (ptr != 0)
-        {
-            result = cuMemFree(ptr);
-            if (result != CUDA_SUCCESS)
-            {
-                RTC_LOG(LS_INFO) << "cuMemFree failed. result=" << result;
-                return result;
-            }
-        }
-
-        result = cuMemAlloc(&ptr, size);
-        if (result != CUDA_SUCCESS)
-        {
-            RTC_LOG(LS_INFO) << "cuMemAlloc failed. result=" << result;
-            return result;
-        }
-        return result;
-    }
 } // end namespace webrtc
 } // end namespace unity

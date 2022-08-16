@@ -56,7 +56,7 @@ namespace webrtc
         /// <param name="nativeTexturePtr"> a pointer of UnityVulkanImage </param>
         /// <returns></returns>
         bool CopyResourceFromNativeV(ITexture2D* dest, void* nativeTexturePtr) override;
-        std::unique_ptr<GpuMemoryBufferHandle> Map(ITexture2D* texture) override;
+        std::unique_ptr<GpuMemoryBufferHandle> Map(ITexture2D* texture, GpuMemoryBufferHandle::AccessMode mode) override;
         bool WaitSync(const ITexture2D* texture, uint64_t nsTimeout = 0) override;
         bool ResetSync(const ITexture2D* texture) override;
         bool WaitIdleForTest() override;

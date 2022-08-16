@@ -5,6 +5,7 @@
 #endif
 
 #include "GraphicsDevice/ITexture2D.h"
+#include "GraphicsDevice/IGraphicsDevice.h"
 #include "PlatformBase.h"
 #include "VideoFrameBufferPool.h"
 #include "NativeFrameBuffer.h"
@@ -41,7 +42,7 @@ namespace webrtc
     {
     }
 
-    VideoFrameBufferPool::~VideoFrameBufferPool() { RTC_DCHECK_EQ(pool_.size(), 0); }
+    VideoFrameBufferPool::~VideoFrameBufferPool() { /*RTC_DCHECK_EQ(pool_.size(), 0);*/ }
     
     rtc::scoped_refptr<VideoFrameBuffer>
     VideoFrameBufferPool::Create(int width, int height, UnityRenderingExtTextureFormat format)

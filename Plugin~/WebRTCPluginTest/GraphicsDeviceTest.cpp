@@ -142,7 +142,7 @@ namespace webrtc
         const uint32_t height = 256;
         const std::unique_ptr<ITexture2D> src(device()->CreateDefaultTextureV(width, height, format()));
         EXPECT_TRUE(device()->WaitIdleForTest());
-        std::unique_ptr<GpuMemoryBufferHandle> handle = device()->Map(src.get());
+        std::unique_ptr<GpuMemoryBufferHandle> handle = device()->Map(src.get(), GpuMemoryBufferHandle::AccessMode::kRead);
 #if CUDA_PLATFORM
         if (device()->IsCudaSupport())
             EXPECT_NE(handle, nullptr);
@@ -165,7 +165,8 @@ namespace webrtc
         const uint32_t height = 256;
         const std::unique_ptr<ITexture2D> src2(device()->CreateCPUReadTextureV(width, height, format()));
         EXPECT_TRUE(device()->WaitIdleForTest());
-        std::unique_ptr<GpuMemoryBufferHandle> handle2 = device()->Map(src2.get());
+        std::unique_ptr<GpuMemoryBufferHandle> handle2 =
+            device()->Map(src2.get(), GpuMemoryBufferHandle::AccessMode::kRead);
     }
 
     INSTANTIATE_TEST_SUITE_P(GfxDeviceAndColorSpece, GraphicsDeviceTest, testing::ValuesIn(VALUES_TEST_ENV));

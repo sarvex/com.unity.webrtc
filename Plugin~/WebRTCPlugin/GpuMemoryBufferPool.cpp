@@ -4,6 +4,7 @@
 #include <system_wrappers/include/clock.h>
 
 #include "GpuMemoryBufferPool.h"
+#include "GraphicsDevice/IGraphicsDevice.h"
 
 namespace unity
 {
@@ -18,7 +19,7 @@ namespace webrtc
     GpuMemoryBufferPool::~GpuMemoryBufferPool() { }
 
     rtc::scoped_refptr<VideoFrame> GpuMemoryBufferPool::CreateFrame(
-        NativeTexPtr ptr, const Size& size, UnityRenderingExtTextureFormat format, Timestamp timestamp)
+        void* ptr, const Size& size, UnityRenderingExtTextureFormat format, Timestamp timestamp)
     {
         auto buffer = GetOrCreateFrameResources(ptr, size, format);
         VideoFrame::ReturnBufferToPoolCallback callback =
@@ -28,8 +29,8 @@ namespace webrtc
             size, buffer, callback, webrtc::TimeDelta::Micros(timestamp.us()));
     }
 
-    rtc::scoped_refptr<GpuMemoryBufferInterface> GpuMemoryBufferPool::GetOrCreateFrameResources(
-        NativeTexPtr ptr, const Size& size, UnityRenderingExtTextureFormat format)
+    rtc::scoped_refptr<GpuMemoryBufferInterface>
+    GpuMemoryBufferPool::GetOrCreateFrameResources(void* ptr, const Size& size, UnityRenderingExtTextureFormat format)
     {
         auto it = resourcesPool_.begin();
         while (it != resourcesPool_.end())
@@ -45,8 +46,8 @@ namespace webrtc
             }
             it++;
         }
-        rtc::scoped_refptr<GpuMemoryBufferFromUnity> buffer =
-            new rtc::RefCountedObject<GpuMemoryBufferFromUnity>(device_, ptr, size, format);
+        rtc::scoped_refptr<GpuMemoryBufferFromUnity> buffer = new rtc::RefCountedObject<GpuMemoryBufferFromUnity>(
+            device_, ptr, size, format, GpuMemoryBufferHandle::AccessMode::kRead);
         std::unique_ptr<FrameResources> resources = std::make_unique<FrameResources>(buffer);
         resources->MarkUsed(clock_->CurrentTime());
         resourcesPool_.push_back(std::move(resources));

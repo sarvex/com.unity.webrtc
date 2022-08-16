@@ -33,17 +33,18 @@ namespace webrtc
         CUgraphicsResource resource;
         CUexternalMemory externalMemory;
 
-        static std::unique_ptr<GpuMemoryBufferCudaHandle> CreateHandle(CUcontext context, CUdeviceptr ptr);
+        static std::unique_ptr<GpuMemoryBufferCudaHandle> CreateHandle(CUcontext context, CUdeviceptr ptr, AccessMode mode);
 #if defined(_WIN32)
-        static std::unique_ptr<GpuMemoryBufferCudaHandle> CreateHandle(CUcontext context, ID3D11Resource* resource);
         static std::unique_ptr<GpuMemoryBufferCudaHandle>
-        CreateHandle(CUcontext context, ID3D12Resource* resource, HANDLE sharedHandle, size_t memorySize);
+        CreateHandle(CUcontext context, ID3D11Resource* resource, AccessMode mode);
+        static std::unique_ptr<GpuMemoryBufferCudaHandle> CreateHandle(
+            CUcontext context, ID3D12Resource* resource, HANDLE sharedHandle, size_t memorySize, AccessMode mode);
 #endif
         static std::unique_ptr<GpuMemoryBufferCudaHandle>
-        CreateHandle(CUcontext context, void* exportHandle, size_t memorySize, const Size& size);
+        CreateHandle(CUcontext context, void* exportHandle, size_t memorySize, const Size& size, AccessMode mode);
 #if defined(__linux__)
         static std::unique_ptr<GpuMemoryBufferCudaHandle>
-        CreateHandle(CUcontext context, GLuint texture, GLenum target);
+        CreateHandle(CUcontext context, GLuint texture, GLenum target, AccessMode mode);
 #endif
     };
 }

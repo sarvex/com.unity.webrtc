@@ -3,9 +3,10 @@
 #include <api/video/video_frame_buffer.h>
 #include <rtc_base/ref_counted_object.h>
 
+
 // todo(kazuki)::remove
-#include "VideoFrameAdapter.h"
 #include "GraphicsDevice/ITexture2D.h"
+#include "VideoFrameAdapter.h"
 
 namespace unity
 {
@@ -46,10 +47,13 @@ namespace webrtc
             const int height_;
         };
 
-        static rtc::scoped_refptr<NativeFrameBuffer>
-        Create(int width, int height, UnityRenderingExtTextureFormat format, IGraphicsDevice* device)
+        static rtc::scoped_refptr<NativeFrameBuffer> Create(
+            int width,
+            int height,
+            UnityRenderingExtTextureFormat format,
+            IGraphicsDevice* device)
         {
-            return new rtc::RefCountedObject<NativeFrameBuffer>(width, height, format, device);
+            return rtc::make_ref_counted<NativeFrameBuffer>(width, height, format, device);
         }
         VideoFrameBuffer::Type type() const override { return Type::kNative; }
         int width() const override { return texture_->GetWidth(); }
@@ -57,19 +61,24 @@ namespace webrtc
         bool scaled() const override { return false; }
         UnityRenderingExtTextureFormat format() { return texture_->GetFormat(); };
         ITexture2D* texture() { return texture_.get(); }
-        rtc::scoped_refptr<I420BufferInterface> ToI420() override { return I420Buffer::Create(width(), height()); }
-        const webrtc::I420BufferInterface* GetI420() const override { return I420Buffer::Create(width(), height()); }
+        rtc::scoped_refptr<I420BufferInterface> ToI420() override;
+        const webrtc::I420BufferInterface* GetI420() const override;
         const GpuMemoryBufferHandle* handle() { return handle_.get(); }
 
+        void Map(GpuMemoryBufferHandle::AccessMode mode);
+        void Unmap();
+
     protected:
-        NativeFrameBuffer(int width, int height, UnityRenderingExtTextureFormat format, IGraphicsDevice* device)
-            : texture_(device->CreateDefaultTextureV(width, height, format))
-            , handle_(device->Map(texture_.get()))
-        {
-        }
-        ~NativeFrameBuffer() override { }
+        NativeFrameBuffer(
+            int width,
+            int height,
+            UnityRenderingExtTextureFormat format,
+            IGraphicsDevice* device);
+
+        ~NativeFrameBuffer() override;
 
     private:
+        IGraphicsDevice* device_;
         std::unique_ptr<ITexture2D> texture_;
         std::unique_ptr<GpuMemoryBufferHandle> handle_;
     };

@@ -44,7 +44,6 @@ namespace webrtc
         virtual DecoderInfo GetDecoderInfo() const override;
 
     private:
-        CUresult AllocDeviceMemory(CUdeviceptr& ptr, size_t size);
         CUcontext m_context;
         CUdeviceptr m_dpFrame;
         std::unique_ptr<NvDecoderInternal> m_decoder;
