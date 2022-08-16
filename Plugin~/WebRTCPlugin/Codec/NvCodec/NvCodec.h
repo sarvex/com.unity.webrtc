@@ -39,11 +39,15 @@ namespace webrtc
         ~NvEncoder() override { }
     };
 
+    class IGraphicsDevice;
     class NvDecoder : public VideoDecoder
     {
     public:
-        static std::unique_ptr<NvDecoder>
-        Create(const cricket::VideoCodec& codec, CUcontext context, ProfilerMarkerFactory* profiler);
+        static std::unique_ptr<NvDecoder> Create(
+            const cricket::VideoCodec& codec,
+            CUcontext context,
+            ProfilerMarkerFactory* profiler,
+            IGraphicsDevice* device);
         static bool IsSupported();
 
         ~NvDecoder() override { }
@@ -71,7 +75,7 @@ namespace webrtc
     class NvDecoderFactory : public VideoDecoderFactory
     {
     public:
-        NvDecoderFactory(CUcontext context, ProfilerMarkerFactory* profiler);
+        NvDecoderFactory(CUcontext context, ProfilerMarkerFactory* profiler, IGraphicsDevice* device);
         ~NvDecoderFactory() override;
 
         std::vector<webrtc::SdpVideoFormat> GetSupportedFormats() const override;
@@ -80,6 +84,7 @@ namespace webrtc
     private:
         CUcontext context_;
         ProfilerMarkerFactory* profiler_;
+        IGraphicsDevice* device_;
     };
 
 #ifndef _WIN32

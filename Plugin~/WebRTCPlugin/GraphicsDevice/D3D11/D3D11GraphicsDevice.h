@@ -23,16 +23,15 @@ namespace webrtc
         virtual bool InitV() override;
         virtual void ShutdownV() override;
         inline virtual void* GetEncodeDevicePtrV() override;
-        ITexture2D* CreateTexture(void* texture) override;
         ITexture2D*
-        CreateDefaultTextureV(uint32_t w, uint32_t h, UnityRenderingExtTextureFormat textureFormat) override;
-        bool
-        CopyToVideoFrameBuffer(rtc::scoped_refptr<::webrtc::VideoFrameBuffer>& buffer, void* texture) override;
+        CreateDefaultTextureV(uint32_t width, uint32_t height, UnityRenderingExtTextureFormat textureFormat) override;
+        rtc::scoped_refptr<::webrtc::VideoFrameBuffer>
+        CreateVideoFrameBuffer(uint32_t width, uint32_t height, UnityRenderingExtTextureFormat textureFormat) override;
+        bool CopyToVideoFrameBuffer(rtc::scoped_refptr<::webrtc::VideoFrameBuffer>& buffer, void* texture) override;
         virtual ITexture2D*
         CreateCPUReadTextureV(uint32_t w, uint32_t h, UnityRenderingExtTextureFormat textureFormat) override;
         bool CopyResourceV(ITexture2D* dest, ITexture2D* src) override;
         bool CopyResourceFromNativeV(ITexture2D* dest, void* nativeTexturePtr) override;
-        bool CopyResourceFromHandle(ITexture2D* dest, const GpuMemoryBufferHandle* handle) override;
         std::unique_ptr<GpuMemoryBufferHandle> Map(ITexture2D* texture) override;
         rtc::scoped_refptr<::webrtc::I420Buffer> ConvertRGBToI420(ITexture2D* tex) override;
         rtc::scoped_refptr<::webrtc::VideoFrameBuffer> ConvertToBuffer(void* ptr) override;

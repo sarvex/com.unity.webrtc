@@ -70,8 +70,6 @@ namespace webrtc
         virtual bool InitV() override;
         virtual void ShutdownV() override;
         inline virtual void* GetEncodeDevicePtrV() override;
-
-        ITexture2D* CreateTexture(void* texture) override;
         virtual ITexture2D*
         CreateDefaultTextureV(uint32_t width, uint32_t height, UnityRenderingExtTextureFormat textureFormat) override;
         virtual bool CopyResourceV(ITexture2D* dest, ITexture2D* src) override;

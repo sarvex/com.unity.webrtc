@@ -158,10 +158,10 @@ namespace webrtc
         return true;
     }
 
-    std::unique_ptr<NvDecoder>
-        NvDecoder::Create(const cricket::VideoCodec& codec, CUcontext context, ProfilerMarkerFactory* profiler)
+    std::unique_ptr<NvDecoder> NvDecoder::Create(
+        const cricket::VideoCodec& codec, CUcontext context, ProfilerMarkerFactory* profiler, IGraphicsDevice* device)
     {
-        return std::make_unique<NvDecoderImpl>(context, profiler);
+        return std::make_unique<NvDecoderImpl>(context, profiler, device);
     }
 
     NvEncoderFactory::NvEncoderFactory(CUcontext context, NV_ENC_BUFFER_FORMAT format, ProfilerMarkerFactory* profiler)
@@ -202,9 +202,10 @@ namespace webrtc
         return NvEncoder::Create(cricket::VideoCodec(format), context_, CU_MEMORYTYPE_ARRAY, format_, profiler_);
     }
 
-    NvDecoderFactory::NvDecoderFactory(CUcontext context, ProfilerMarkerFactory* profiler)
+    NvDecoderFactory::NvDecoderFactory(CUcontext context, ProfilerMarkerFactory* profiler, IGraphicsDevice* device)
         : context_(context)
         , profiler_(profiler)
+        , device_(device)
     {
     }
     NvDecoderFactory::~NvDecoderFactory() = default;
@@ -216,7 +217,7 @@ namespace webrtc
 
     std::unique_ptr<VideoDecoder> NvDecoderFactory::CreateVideoDecoder(const SdpVideoFormat& format)
     {
-        return NvDecoder::Create(cricket::VideoCodec(format), context_, profiler_);
+        return NvDecoder::Create(cricket::VideoCodec(format), context_, profiler_, device_);
     }
 }
 }

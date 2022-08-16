@@ -93,7 +93,7 @@ namespace webrtc
             if (gfxDevice->IsCudaSupport())
             {
                 CUcontext context = gfxDevice->GetCUcontext();
-                return new NvDecoderFactory(context, profiler);
+                return new NvDecoderFactory(context, profiler, gfxDevice);
             }
 #endif
         }

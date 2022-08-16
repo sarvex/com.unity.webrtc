@@ -145,12 +145,12 @@ namespace webrtc
         SAFE_CLOSE_HANDLE(m_copyResourceEventHandle)
     }
 
-    ITexture2D* D3D12GraphicsDevice::CreateTexture(void* texture)
-    {
-        ID3D12Resource* d3dResource = reinterpret_cast<ID3D12Resource*>(texture);
-        D3D12_RESOURCE_DESC desc = d3dResource->GetDesc();
-        return new D3D12Texture2D(desc.Width, desc.Height, d3dResource, 0, nullptr);
-    }
+    //ITexture2D* D3D12GraphicsDevice::CreateTexture(void* texture)
+    //{
+    //    ID3D12Resource* d3dResource = reinterpret_cast<ID3D12Resource*>(texture);
+    //    D3D12_RESOURCE_DESC desc = d3dResource->GetDesc();
+    //    return new D3D12Texture2D(desc.Width, desc.Height, d3dResource, 0, nullptr);
+    //}
 
     ITexture2D*
     D3D12GraphicsDevice::CreateDefaultTextureV(uint32_t width, uint32_t height, UnityRenderingExtTextureFormat format)

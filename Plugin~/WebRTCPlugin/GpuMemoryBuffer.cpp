@@ -37,12 +37,13 @@ namespace webrtc
     const GpuMemoryBufferHandle* GpuMemoryBufferFromCuda::handle() const { return handle_.get(); }
 #endif
 
+#if __ANDROID__
     AHardwareBufferHandle::AHardwareBufferHandle() : buffer(nullptr) { }
     AHardwareBufferHandle::AHardwareBufferHandle(AHardwareBufferHandle&& other) = default;
     AHardwareBufferHandle& AHardwareBufferHandle::operator=(AHardwareBufferHandle&& other) = default;
 
     AHardwareBufferHandle::~AHardwareBufferHandle() { }
-
+#endif
 
     GpuMemoryBufferFromUnity::GpuMemoryBufferFromUnity(
         IGraphicsDevice* device, NativeTexPtr ptr, const Size& size, UnityRenderingExtTextureFormat format)

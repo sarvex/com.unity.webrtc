@@ -43,15 +43,6 @@ namespace webrtc
 
     void D3D11GraphicsDevice::ShutdownV() { m_cudaContext.Shutdown(); }
 
-    ITexture2D* D3D11GraphicsDevice::CreateTexture(void* texture)
-    {
-        ID3D11Texture2D* d3dTexture = static_cast<ID3D11Texture2D*>(texture);
-
-        D3D11_TEXTURE2D_DESC desc = {};
-        d3dTexture->GetDesc(&desc);
-        return new D3D11Texture2D(desc.Width, desc.Height, d3dTexture, true);
-    }
-
     ITexture2D*
     D3D11GraphicsDevice::CreateDefaultTextureV(uint32_t width, uint32_t height, UnityRenderingExtTextureFormat format)
     {
@@ -74,6 +65,12 @@ namespace webrtc
             return nullptr;
         }
         return new D3D11Texture2D(width, height, format, texture);
+    }
+
+     rtc::scoped_refptr<::webrtc::VideoFrameBuffer> D3D11GraphicsDevice::CreateVideoFrameBuffer(
+        uint32_t width, uint32_t height, UnityRenderingExtTextureFormat textureFormat)
+    {
+        return rtc::make_ref_counted<NativeFrameBuffer>(width, height, textureFormat, this);
     }
 
     ITexture2D*
@@ -211,14 +208,6 @@ namespace webrtc
         return i420_buffer;
     }
 
-    class NativeFrameBuffer : webrtc::VideoFrameBuffer
-    {
-    public:
-        NativeFrameBuffer(ITexture2D* texture) : texture_(texture) { }
-    private:
-        ITexture2D* texture_;
-    };
-
     rtc::scoped_refptr<::webrtc::VideoFrameBuffer> D3D11GraphicsDevice::ConvertToBuffer(void* ptr)
     {
         ID3D11Texture2D* d3dTexture = static_cast<ID3D11Texture2D*>(ptr);
@@ -226,9 +215,9 @@ namespace webrtc
         D3D11_TEXTURE2D_DESC desc = {};
         d3dTexture->GetDesc(&desc);
 
-        // todo(kazuki):: cache texture
-        D3D11Texture2D* texture = new D3D11Texture2D(desc.Width, desc.Height, d3dTexture, true);
-        return rtc::make_ref_counted<NativeFrameBuffer>(texture);
+        RTC_DCHECK_EQ(desc.Format, DXGI_FORMAT_B8G8R8A8_UNORM);
+        UnityRenderingExtTextureFormat format = kUnityRenderingExtFormatB8G8R8A8_UNorm;
+        return rtc::make_ref_counted<NativeFrameBuffer>(desc.Width, desc.Height, format, this);
     }
 
     std::unique_ptr<GpuMemoryBufferHandle> D3D11GraphicsDevice::Map(ITexture2D* texture)

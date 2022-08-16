@@ -158,8 +158,9 @@ namespace webrtc
         const auto result = connection->connection->AddTrack(track, streamIds);
         EXPECT_TRUE(result.ok());
 
-        auto frame = CreateTestFrame(device_, texture_.get(), kFormat);
-        source->OnFrameCaptured(frame);
+        auto buffer =
+            device_->CreateVideoFrameBuffer(texture_->GetWidth(), texture_->GetHeight(), texture_->GetFormat());
+        source->OnFrameCaptured(buffer, webrtc::Clock::GetRealTimeClock()->CurrentTime());
 
         const auto sender = result.value();
         const auto result2 = connection->connection->RemoveTrackNew(sender);
@@ -199,38 +200,6 @@ namespace webrtc
         context->DeleteVideoRenderer(renderer);
         context->RemoveRefPtr(track);
         context->RemoveRefPtr(source);
-    }
-
-    TEST_P(ContextTest, CreateAndDeleteVideoRenderer)
-    {
-       const auto renderer = context->CreateVideoRenderer(callback_videoframeresize, true);
-       EXPECT_NE(nullptr, renderer);
-       context->DeleteVideoRenderer(renderer);
-    }
-
-    TEST_P(ContextTest, EqualRendererGetById)
-    {
-       const auto renderer = context->CreateVideoRenderer(callback_videoframeresize, true);
-       EXPECT_NE(nullptr, renderer);
-       const auto rendererId = renderer->GetId();
-       const auto rendererGetById = context->GetVideoRenderer(rendererId);
-       EXPECT_NE(nullptr, rendererGetById);
-       context->DeleteVideoRenderer(renderer);
-    }
-
-    TEST_P(ContextTest, AddAndRemoveVideoRendererToVideoTrack)
-    {
-       const auto source = context->CreateVideoSource();
-       EXPECT_NE(nullptr, source);
-       const auto track = context->CreateVideoTrack("video", source);
-       EXPECT_NE(nullptr, track);
-       const auto renderer = context->CreateVideoRenderer(callback_videoframeresize, true);
-       EXPECT_NE(nullptr, renderer);
-       track->AddOrUpdateSink(renderer, rtc::VideoSinkWants());
-       track->RemoveSink(renderer);
-       context->DeleteVideoRenderer(renderer);
-       context->RemoveRefPtr(track);
-       context->RemoveRefPtr(source);
     }
 
     INSTANTIATE_TEST_SUITE_P(GfxDevice, ContextTest, testing::ValuesIn(supportedGfxDevices));

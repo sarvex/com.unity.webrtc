@@ -11,6 +11,9 @@
 #include "NvDecoderImpl.h"
 #include "ProfilerMarkerFactory.h"
 #include "ScopedProfiler.h"
+#include "NativeFrameBuffer.h"
+#include "GraphicsDevice/IGraphicsDevice.h"
+#include "GraphicsDevice/Cuda/GpuMemoryBufferCudaHandle.h"
 
 namespace unity
 {
@@ -27,13 +30,13 @@ namespace webrtc
             static_cast<ColorSpace::RangeID>(format.video_signal_description.video_full_range_flag));
     }
 
-    NvDecoderImpl::NvDecoderImpl(CUcontext context, ProfilerMarkerFactory* profiler)
+    NvDecoderImpl::NvDecoderImpl(CUcontext context, ProfilerMarkerFactory* profiler, IGraphicsDevice* device)
         : m_context(context)
         , m_decoder(nullptr)
         , m_dpFrame(0)
         , m_isConfiguredDecoder(false)
         , m_decodedCompleteCallback(nullptr)
-        //        , m_buffer_pool(false)
+        , m_buffer_pool(device, Clock::GetRealTimeClock()->GetRealTimeClock())
         , m_profiler(profiler)
     {
         // if (profiler)
@@ -231,15 +234,20 @@ namespace webrtc
                         iMatrix);
             }
 
-            Size size(m_decoder->GetWidth(), m_decoder->GetHeight());
-            rtc::scoped_refptr<VideoFrame> frame = VideoFrame::WrapExternalGpuMemoryBuffer(
-                size,
-                new rtc::RefCountedObject<GpuMemoryBufferFromCuda>(m_context, m_dpFrame, size, format),
-                nullptr,
-                TimeDelta::Millis(timeStamp));
+            rtc::scoped_refptr<VideoFrameBuffer> buffer =
+                m_buffer_pool.Create(m_decoder->GetWidth(), m_decoder->GetHeight(), format);
+            NativeFrameBuffer* nativeFrameBuffer = static_cast<NativeFrameBuffer*>(buffer.get());
+            const GpuMemoryBufferCudaHandle* handle =
+                static_cast<const GpuMemoryBufferCudaHandle*>(nativeFrameBuffer->handle());
 
-            rtc::scoped_refptr<VideoFrameAdapter> buffer(
-                new rtc::RefCountedObject<VideoFrameAdapter>(std::move(frame)));
+            // copy CUDA devicePtr to CUDA array
+            size_t size = 4 * nRGBWidth * m_decoder->GetWidth() * m_decoder->GetHeight();
+            CUresult result = cuMemcpyDtoA(handle->mappedArray, 0, m_dpFrame, size);
+            if (result != CUDA_SUCCESS)
+            {
+                RTC_LOG(LS_INFO) << "cuMemcpyDtoA failed. result=" << result;
+                return WEBRTC_VIDEO_CODEC_ERR_PARAMETER;
+            }
 
             ::webrtc::VideoFrame decoded_frame = ::webrtc::VideoFrame::Builder()
                                                      .set_video_frame_buffer(buffer)
@@ -263,7 +271,7 @@ namespace webrtc
             result = cuMemFree(ptr);
             if (result != CUDA_SUCCESS)
             {
-                RTC_LOG(LS_INFO) << "cuMemFree failed";
+                RTC_LOG(LS_INFO) << "cuMemFree failed. result=" << result;
                 return result;
             }
         }
@@ -271,7 +279,7 @@ namespace webrtc
         result = cuMemAlloc(&ptr, size);
         if (result != CUDA_SUCCESS)
         {
-            RTC_LOG(LS_INFO) << "cuMemAlloc failed";
+            RTC_LOG(LS_INFO) << "cuMemAlloc failed. result=" << result;
             return result;
         }
         return result;

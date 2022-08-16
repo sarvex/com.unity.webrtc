@@ -28,6 +28,7 @@ namespace webrtc
         virtual ~GpuMemoryBufferHandle();
     };
 
+#if __ANDROID__
     struct AHardwareBufferHandle : public GpuMemoryBufferHandle
     {
         AHardwareBufferHandle();
@@ -37,6 +38,7 @@ namespace webrtc
 
         AHardwareBuffer* buffer;
     };
+#endif
 
     class ITexture2D;
     class GpuMemoryBufferInterface : public rtc::RefCountInterface

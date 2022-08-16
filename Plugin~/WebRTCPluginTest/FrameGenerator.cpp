@@ -26,6 +26,7 @@ namespace webrtc
         : device_(device)
         , width_(width)
         , height_(height)
+        , pool_(device_, Clock::GetRealTimeClock())
     {
     }
 
@@ -44,15 +45,16 @@ namespace webrtc
 
         const UnityRenderingExtTextureFormat kFormat = kUnityRenderingExtFormatR8G8B8A8_SRGB;
 
-        ITexture2D* texture = device_->CreateCPUReadTextureV(
-            static_cast<uint32_t>(width_), static_cast<uint32_t>(height_), kFormat);
+        //ITexture2D* texture = device_->CreateCPUReadTextureV(
+        //    static_cast<uint32_t>(width_), static_cast<uint32_t>(height_), kFormat);
 
-        queue_.push(std::unique_ptr<ITexture2D>(texture));
-        rtc::scoped_refptr<VideoFrame> frame = CreateTestFrame(device_, texture, kFormat);
-        EXPECT_TRUE(device_->WaitIdleForTest());
+        //queue_.push(std::unique_ptr<ITexture2D>(texture));
+        //rtc::scoped_refptr<VideoFrame> frame = CreateTestFrame(device_, texture, kFormat);
+        //EXPECT_TRUE(device_->WaitIdleForTest());
 
-        ::webrtc::VideoFrame videoFrame = VideoFrameAdapter::CreateVideoFrame(frame);
-        rtc::scoped_refptr<VideoFrameBuffer> buffer = videoFrame.video_frame_buffer();
+        //::webrtc::VideoFrame videoFrame = VideoFrameAdapter::CreateVideoFrame(frame);
+        //rtc::scoped_refptr<VideoFrameBuffer> buffer = videoFrame.video_frame_buffer();
+        auto buffer = pool_.Create(width_, height_, kFormat);
         return VideoFrameData(buffer, absl::nullopt);
     }
 }

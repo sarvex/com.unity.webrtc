@@ -43,9 +43,7 @@ namespace webrtc
     {
         std::unique_lock<std::mutex> lock(m_mutex);
         if (!lock.owns_lock())
-        {
             return nullptr;
-        }
         if (m_last_renderered_timestamp == m_timestamp)
         {
             // skipped copying texture
@@ -54,8 +52,6 @@ namespace webrtc
         m_last_renderered_timestamp = m_timestamp;
         return m_frameBuffer;
     }
-
-    void UnityVideoRenderer::SetTexture(void* texture) { m_texture = m_device->CreateTexture(texture); }
 
     void UnityVideoRenderer::SetFrameBuffer(rtc::scoped_refptr<webrtc::VideoFrameBuffer> buffer, int64_t timestamp)
     {
@@ -77,13 +73,13 @@ namespace webrtc
     {
         auto buffer = GetFrameBuffer();
 
-        size_t size = static_cast<size_t>(width * height * 4);
-        if (tempBuffer.size() != size)
-            tempBuffer.resize(size);
-
         // return a previous texture buffer when framebuffer is returned null.
         if (!buffer)
             return nullptr;
+
+        size_t size = static_cast<size_t>(width * height * 4);
+        if (tempBuffer.size() != size)
+            tempBuffer.resize(size);
 
         if (buffer->type() == webrtc::VideoFrameBuffer::Type::kNative)
         {

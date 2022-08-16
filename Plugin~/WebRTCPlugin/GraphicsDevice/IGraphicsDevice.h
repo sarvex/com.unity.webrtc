@@ -43,7 +43,6 @@ namespace webrtc
 #endif
         virtual bool InitV() = 0;
         virtual void ShutdownV() = 0;
-        virtual ITexture2D* CreateTexture(void* texture) { return nullptr; }
         virtual ITexture2D*
         CreateDefaultTextureV(uint32_t width, uint32_t height, UnityRenderingExtTextureFormat textureFormat) = 0;
         virtual rtc::scoped_refptr<::webrtc::VideoFrameBuffer> CreateVideoFrameBuffer(uint32_t width, uint32_t height, UnityRenderingExtTextureFormat textureFormat) { return nullptr; }

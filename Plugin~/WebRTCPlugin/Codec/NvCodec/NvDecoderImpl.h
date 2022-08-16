@@ -9,6 +9,7 @@
 #include "NvCodecUtils.h"
 #include "NvDecoder/NvDecoder.h"
 #include "VideoFrameAdapter.h"
+#include "VideoFrameBufferPool.h"
 
 using namespace webrtc;
 
@@ -31,7 +32,7 @@ namespace webrtc
     class NvDecoderImpl : public unity::webrtc::NvDecoder
     {
     public:
-        NvDecoderImpl(CUcontext context, ProfilerMarkerFactory* profiler);
+        NvDecoderImpl(CUcontext context, ProfilerMarkerFactory* profiler, IGraphicsDevice* device);
         NvDecoderImpl(const NvDecoderImpl&) = delete;
         NvDecoderImpl& operator=(const NvDecoderImpl&) = delete;
         ~NvDecoderImpl() override;
@@ -52,7 +53,7 @@ namespace webrtc
         VideoCodec m_codec;
 
         DecodedImageCallback* m_decodedCompleteCallback = nullptr;
-        webrtc::VideoFrameBufferPool m_buffer_pool;
+        VideoFrameBufferPool m_buffer_pool;
         H264BitstreamParser m_h264_bitstream_parser;
 
         ProfilerMarkerFactory* m_profiler;
