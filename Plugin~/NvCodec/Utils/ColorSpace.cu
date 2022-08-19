@@ -95,21 +95,24 @@ __device__ inline Rgb YuvToRgbForPixel(YuvUnit y, YuvUnit u, YuvUnit v) {
         mid = 1 << (sizeof(YuvUnit) * 8 - 1);
     float fy = (int)y - low, fu = (int)u - mid, fv = (int)v - mid;
     const float maxf = (1 << sizeof(YuvUnit) * 8) - 1.0f;
-    YuvUnit 
-        r = (YuvUnit)Clamp(matYuv2Rgb[0][0] * fy + matYuv2Rgb[0][1] * fu + matYuv2Rgb[0][2] * fv, 0.0f, maxf),
-        g = (YuvUnit)Clamp(matYuv2Rgb[1][0] * fy + matYuv2Rgb[1][1] * fu + matYuv2Rgb[1][2] * fv, 0.0f, maxf),
-        b = (YuvUnit)Clamp(matYuv2Rgb[2][0] * fy + matYuv2Rgb[2][1] * fu + matYuv2Rgb[2][2] * fv, 0.0f, maxf);
-    
+    YuvUnit r = (YuvUnit)Clamp(matYuv2Rgb[0][0] * fy + matYuv2Rgb[0][1] * fu + matYuv2Rgb[0][2] * fv, 0.0f, maxf),
+            g = (YuvUnit)Clamp(matYuv2Rgb[1][0] * fy + matYuv2Rgb[1][1] * fu + matYuv2Rgb[1][2] * fv, 0.0f, maxf),
+            b = (YuvUnit)Clamp(matYuv2Rgb[2][0] * fy + matYuv2Rgb[2][1] * fu + matYuv2Rgb[2][2] * fv, 0.0f, maxf),
+            a = maxf;
     Rgb rgb{};
     const int nShift = abs((int)sizeof(YuvUnit) - (int)sizeof(rgb.c.r)) * 8;
     if (sizeof(YuvUnit) >= sizeof(rgb.c.r)) {
         rgb.c.r = r >> nShift;
         rgb.c.g = g >> nShift;
         rgb.c.b = b >> nShift;
-    } else {
+        rgb.c.a = a >> nShift;
+    }
+    else
+    {
         rgb.c.r = r << nShift;
         rgb.c.g = g << nShift;
         rgb.c.b = b << nShift;
+        rgb.c.a = a << nShift;
     }
     return rgb;
 }

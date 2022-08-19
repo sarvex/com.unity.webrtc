@@ -27,7 +27,7 @@ namespace webrtc
         : device_(device)
         , width_(width)
         , height_(height)
-        , pool_(device_, Clock::GetRealTimeClock())
+        , pool_(device_, 10)
     {
     }
 

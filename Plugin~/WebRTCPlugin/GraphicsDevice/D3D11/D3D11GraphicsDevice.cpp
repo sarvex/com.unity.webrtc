@@ -6,8 +6,8 @@
 #include "D3D11Texture2D.h"
 #include "GraphicsDevice/Cuda/GpuMemoryBufferCudaHandle.h"
 #include "GraphicsDevice/GraphicsUtility.h"
-#include "NvCodecUtils.h"
 #include "NativeFrameBuffer.h"
+#include "NvCodecUtils.h"
 
 using namespace ::webrtc;
 using namespace Microsoft::WRL;
@@ -66,7 +66,7 @@ namespace webrtc
         return new D3D11Texture2D(width, height, format, texture);
     }
 
-     rtc::scoped_refptr<::webrtc::VideoFrameBuffer> D3D11GraphicsDevice::CreateVideoFrameBuffer(
+    rtc::scoped_refptr<::webrtc::VideoFrameBuffer> D3D11GraphicsDevice::CreateVideoFrameBuffer(
         uint32_t width, uint32_t height, UnityRenderingExtTextureFormat textureFormat)
     {
         return rtc::make_ref_counted<NativeFrameBuffer>(width, height, textureFormat, this);
@@ -120,18 +120,16 @@ namespace webrtc
         return true;
     }
 
-    bool D3D11GraphicsDevice::CopyResourceFromNativeV(ITexture2D* dest, void* nativeTexturePtr)
+    bool D3D11GraphicsDevice::CopyTexture(ID3D11Resource* dest, ID3D11Resource* src)
     {
-        ID3D11Resource* nativeDest = reinterpret_cast<ID3D11Resource*>(dest->GetNativeTexturePtrV());
-        ID3D11Resource* nativeSrc = reinterpret_cast<ID3D11Resource*>(nativeTexturePtr);
-        if (nativeSrc == nativeDest)
+        if (src == dest)
             return false;
-        if (nativeSrc == nullptr || nativeDest == nullptr)
+        if (src == nullptr || dest == nullptr)
             return false;
 
         ComPtr<ID3D11DeviceContext> context;
         m_d3d11Device->GetImmediateContext(context.GetAddressOf());
-        context->CopyResource(nativeDest, nativeSrc);
+        context->CopyResource(dest, src);
 
         // todo(kazuki): Flush incurs a significant amount of overhead.
         // Should run the process of copying texture asyncnously.
@@ -144,8 +142,27 @@ namespace webrtc
         return true;
     }
 
-    bool D3D11GraphicsDevice::CopyToVideoFrameBuffer(
-        rtc::scoped_refptr<VideoFrameBuffer>& buffer, void* texture)
+    bool D3D11GraphicsDevice::CopyResourceFromNativeV(ITexture2D* dest, void* nativeTexturePtr)
+    {
+        ID3D11Resource* nativeDest = reinterpret_cast<ID3D11Resource*>(dest->GetNativeTexturePtrV());
+        ID3D11Resource* nativeSrc = reinterpret_cast<ID3D11Resource*>(nativeTexturePtr);
+
+        return CopyTexture(nativeDest, nativeSrc);
+    }
+
+    bool D3D11GraphicsDevice::CopyResourceFromBuffer(void* dest, rtc::scoped_refptr<::webrtc::VideoFrameBuffer> buffer)
+    {
+        RTC_DCHECK(dest);
+        RTC_DCHECK(buffer);
+        NativeFrameBuffer* nativeFrameBuffer = static_cast<NativeFrameBuffer*>(buffer.get());
+        ITexture2D* texture = nativeFrameBuffer->texture();
+        RTC_DCHECK(texture);
+        ID3D11Resource* nativeDest = reinterpret_cast<ID3D11Resource*>(dest);
+        ID3D11Resource* nativeSrc = reinterpret_cast<ID3D11Resource*>(texture->GetNativeTexturePtrV());
+        return CopyTexture(nativeDest, nativeSrc);
+    }
+
+    bool D3D11GraphicsDevice::CopyToVideoFrameBuffer(rtc::scoped_refptr<VideoFrameBuffer>& buffer, void* texture)
     {
         NativeFrameBuffer* nativeBuffer = static_cast<NativeFrameBuffer*>(buffer.get());
         return CopyResourceFromNativeV(nativeBuffer->texture(), texture);

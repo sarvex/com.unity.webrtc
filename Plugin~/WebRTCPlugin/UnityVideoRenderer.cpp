@@ -5,6 +5,7 @@
 #include "GraphicsDevice/IGraphicsDevice.h"
 #include "GraphicsDevice/ITexture2D.h"
 #include "UnityVideoRenderer.h"
+#include "NativeFrameBuffer.h"
 
 namespace unity
 {
@@ -31,7 +32,7 @@ namespace webrtc
 
     void UnityVideoRenderer::SetTexture(void* texture) { m_texture = texture; }
 
-    void UnityVideoRenderer::OnFrame(const webrtc::VideoFrame& frame)
+    void UnityVideoRenderer::OnFrame(const ::webrtc::VideoFrame& frame)
     {
         rtc::scoped_refptr<webrtc::VideoFrameBuffer> frame_buffer = frame.video_frame_buffer();
         SetFrameBuffer(frame_buffer, frame.timestamp_us());
@@ -77,14 +78,22 @@ namespace webrtc
         if (!buffer)
             return nullptr;
 
-        size_t size = static_cast<size_t>(width * height * 4);
-        if (tempBuffer.size() != size)
-            tempBuffer.resize(size);
-
         if (buffer->type() == webrtc::VideoFrameBuffer::Type::kNative)
         {
             if(!m_texture)
                 return nullptr;
+
+            // note:
+            // 
+            // Mapping the buffer to cuda array must be on the rendering thread.
+            NativeFrameBuffer* nativeFrameBuffer = static_cast<NativeFrameBuffer*>(buffer.get());
+            auto handle = nativeFrameBuffer->handle();
+            if (!handle)
+            {
+                nativeFrameBuffer->Map(GpuMemoryBufferHandle::AccessMode::kWrite);
+                return nullptr;
+            }
+
             bool result = m_device->CopyResourceFromBuffer(m_texture, buffer);
             if(!result)
             {
@@ -105,6 +114,10 @@ namespace webrtc
             temp->ScaleFrom(*buffer->ToI420());
             i420_buffer = temp;
         }
+
+        size_t size = static_cast<size_t>(width * height * 4);
+        if (tempBuffer.size() != size)
+            tempBuffer.resize(size);
 
         if (m_needFlipVertical)
             height = -height;

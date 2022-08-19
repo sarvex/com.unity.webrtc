@@ -37,31 +37,46 @@ namespace webrtc
         return false;
     }
 
-    VideoFrameBufferPool::VideoFrameBufferPool(IGraphicsDevice* device, Clock* clock)
+    VideoFrameBufferPool::VideoFrameBufferPool(IGraphicsDevice* device, size_t maxNumberOfBuffers)
         : device_(device)
+        , maxNumberOfBuffers_(maxNumberOfBuffers)
     {
     }
 
-    VideoFrameBufferPool::~VideoFrameBufferPool() { /*RTC_DCHECK_EQ(pool_.size(), 0);*/ }
+    VideoFrameBufferPool::~VideoFrameBufferPool() {}
     
     rtc::scoped_refptr<VideoFrameBuffer>
     VideoFrameBufferPool::Create(int width, int height, UnityRenderingExtTextureFormat format)
     {
-        auto result = std::find_if(
-            pool_.begin(),
-            pool_.end(),
-            [width, height](const rtc::scoped_refptr<VideoFrameBuffer>& x)
+        // Release buffers with wrong resolution or different type.
+        for (auto it = pool_.begin(); it != pool_.end();)
+        {
+            const auto& buffer = *it;
+            if (buffer->width() != width || buffer->height() != height ||
+                buffer->type() != VideoFrameBuffer::Type::kNative)
             {
-                return x->width() == width && x->height() == height && x->type() == VideoFrameBuffer::Type::kNative;
-                // todo(kazuki):: check format && x->format() == format;
-            });
-        if (result != pool_.end())
-            return *result;
+                it = pool_.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+
+        for (const rtc::scoped_refptr<VideoFrameBuffer>& buffer : pool_)
+        {
+            if(HasOneRef(buffer))
+            {
+                return buffer;
+            }
+
+        }
+        if (pool_.size() >= maxNumberOfBuffers_)
+            return nullptr;
 
         auto buffer = device_->CreateVideoFrameBuffer(width, height, format);
-        auto ptr = buffer.get();
-        pool_.emplace_back(std::move(buffer));
-        return ptr;
+        pool_.emplace_back(buffer);
+        return buffer;
     }
 }
 }

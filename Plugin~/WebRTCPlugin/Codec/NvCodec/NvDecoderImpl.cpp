@@ -36,7 +36,7 @@ namespace webrtc
         , m_dpFrame(0)
         , m_isConfiguredDecoder(false)
         , m_decodedCompleteCallback(nullptr)
-        , m_buffer_pool(device, Clock::GetRealTimeClock()->GetRealTimeClock())
+        , m_bufferPool(device, kMaxNumberOfBuffers)
         , m_profiler(profiler)
     {
         // if (profiler)
@@ -160,6 +160,14 @@ namespace webrtc
             RTC_LOG(LS_INFO) << "cuCtxPushCurrent failed. result=" << result;
             return result;
         }
+        //uint32_t color = (255 << 24) | (0 << 16) | (0 << 8) | 255;
+        //result = cuMemsetD2D32(dpBgra, nPitch, color, nWidth, nHeight);
+        //if (result != CUDA_SUCCESS)
+        //{
+        //    RTC_LOG(LS_INFO) << "cuMemsetD2D32 failed. result=" << result;
+        //    return result;
+        //}
+
         CUDA_MEMCPY2D m = { 0 };
         m.srcMemoryType = CU_MEMORYTYPE_DEVICE;
         m.srcDevice = dpBgra;
@@ -252,14 +260,13 @@ namespace webrtc
             ? *input_image.ColorSpace()
             : ExtractH264ColorSpace(m_decoder->GetVideoFormatInfo());
 
-        int width = static_cast<int>(input_image._encodedWidth);
+        int width = static_cast<int>(m_decoder->GetDecodeWidth());
         int nRGBWidth = (width + 1) & ~1;
 
         for (int i = 0; i < nFrameReturnd; i++)
         {
             int64_t timeStamp;
             uint8_t* pFrame = m_decoder->GetFrame(&timeStamp);
-            UnityRenderingExtTextureFormat format = kUnityRenderingExtFormatB8G8R8A8_UNorm;
             int iMatrix = m_decoder->GetVideoFormatInfo().video_signal_description.matrix_coefficients;
             if (m_decoder->GetBitDepth() == 8)
             {
@@ -304,24 +311,29 @@ namespace webrtc
                         iMatrix);
             }
 
+            UnityRenderingExtTextureFormat format = kUnityRenderingExtFormatB8G8R8A8_UNorm;
             rtc::scoped_refptr<VideoFrameBuffer> buffer =
-                m_buffer_pool.Create(m_decoder->GetWidth(), m_decoder->GetHeight(), format);
-            NativeFrameBuffer* nativeFrameBuffer = static_cast<NativeFrameBuffer*>(buffer.get());
+                m_bufferPool.Create(m_decoder->GetWidth(), m_decoder->GetHeight(), format);
 
+            // mapping cuda array to write decoded data
+            NativeFrameBuffer* nativeFrameBuffer = static_cast<NativeFrameBuffer*>(buffer.get());
             auto handle = nativeFrameBuffer->handle();
-            if (!handle)
+            if (handle)
             {
-                nativeFrameBuffer->Map(GpuMemoryBufferHandle::AccessMode::kWrite);
-                handle = nativeFrameBuffer->handle();
-            }
-            const GpuMemoryBufferCudaHandle* cudaHandle =
-                static_cast<const GpuMemoryBufferCudaHandle*>(handle);
-            CUresult result = CopyDeviceFrame(
-                current, cudaHandle->mappedArray, m_dpFrame, m_decoder->GetWidth(), m_decoder->GetHeight(), 0);
-            if (result != CUDA_SUCCESS)
-            {
-                RTC_LOG(LS_INFO) << "CopyDeviceFrame failed. result=" << result;
-                return WEBRTC_VIDEO_CODEC_ERR_PARAMETER;
+                 const GpuMemoryBufferCudaHandle* cudaHandle =
+                    static_cast<const GpuMemoryBufferCudaHandle*>(handle);
+                 CUresult result = CopyDeviceFrame(
+                    current,
+                    cudaHandle->mappedArray,
+                    m_dpFrame,
+                    m_decoder->GetWidth(),
+                    m_decoder->GetHeight(),
+                    4 * nRGBWidth);
+                 if (result != CUDA_SUCCESS)
+                {
+                    RTC_LOG(LS_INFO) << "CopyDeviceFrame failed. result=" << result;
+                    return WEBRTC_VIDEO_CODEC_ERR_PARAMETER;
+                }
             }
 
             ::webrtc::VideoFrame decoded_frame = ::webrtc::VideoFrame::Builder()

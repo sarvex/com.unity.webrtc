@@ -52,11 +52,13 @@ namespace webrtc
         VideoCodec m_codec;
 
         DecodedImageCallback* m_decodedCompleteCallback = nullptr;
-        VideoFrameBufferPool m_buffer_pool;
+        VideoFrameBufferPool m_bufferPool;
         H264BitstreamParser m_h264_bitstream_parser;
 
         ProfilerMarkerFactory* m_profiler;
         const UnityProfilerMarkerDesc* m_marker;
+
+        const size_t kMaxNumberOfBuffers = 10;
     };
 
 } // end namespace webrtc

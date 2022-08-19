@@ -337,12 +337,12 @@ namespace webrtc
         if (m_profiler)
             profiler = m_profiler->CreateScopedProfiler(*m_marker);
 
-        const GpuMemoryBufferCudaHandle* cudaHandle = static_cast<const GpuMemoryBufferCudaHandle*>(handle);
         if (!handle)
         {
             RTC_LOG(LS_INFO) << "GpuMemoryBufferCudaHandle is null";
             return false;
         }
+        const GpuMemoryBufferCudaHandle* cudaHandle = static_cast<const GpuMemoryBufferCudaHandle*>(handle);
 
         if (memoryType == CU_MEMORYTYPE_DEVICE)
         {

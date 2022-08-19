@@ -15,6 +15,9 @@
 #include "UnityVulkanInterfaceFunctions.h"
 #endif
 
+// todo(kazuki) refactor
+#include "NativeFrameBuffer.h"
+
 enum class VideoStreamRenderEventID
 {
     Encode = 1,
@@ -116,7 +119,7 @@ static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType ev
         {
             s_gfxDevice->InitV();
         }
-        s_bufferPool = std::make_unique<VideoFrameBufferPool>(s_gfxDevice.get(), s_clock.get());
+        s_bufferPool = std::make_unique<VideoFrameBufferPool>(s_gfxDevice.get(), 10);
         break;
     }
     case kUnityGfxDeviceEventShutdown:
@@ -258,6 +261,16 @@ static void UNITY_INTERFACE_API OnRenderEvent(int eventID, void* data)
             profiler = s_ProfilerMarkerFactory->CreateScopedProfiler(*s_MarkerEncode);
 
         auto buffer = s_bufferPool->Create(encodeData->width, encodeData->height, encodeData->format);
+        if (!buffer)
+        {
+            RTC_LOG(LS_INFO) << "All buffers are in use in the buffer pool.";
+            return;
+        }
+        // todo(kazuki) refactor
+        auto nativeFrameBuffer = static_cast<NativeFrameBuffer*>(buffer.get());
+        if (!nativeFrameBuffer->handle())
+            nativeFrameBuffer->Map(GpuMemoryBufferHandle::AccessMode::kRead);
+
         if (!device->CopyToVideoFrameBuffer(buffer, encodeData->texture))
         {
             RTC_LOG(LS_INFO) << "IGraphicsDevice::CopyToVideoFrameBuffer failed.";

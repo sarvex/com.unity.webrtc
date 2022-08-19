@@ -17,7 +17,9 @@ namespace webrtc
     class VideoFrameBufferPool
     {
     public:
-        VideoFrameBufferPool(IGraphicsDevice* device, Clock* clock);
+        VideoFrameBufferPool(
+            IGraphicsDevice* device,
+            size_t maxNumberOfBuffers = std::numeric_limits<size_t>::max());
         VideoFrameBufferPool(const VideoFrameBufferPool&) = delete;
         VideoFrameBufferPool& operator=(const VideoFrameBufferPool&) = delete;
 
@@ -27,6 +29,7 @@ namespace webrtc
 
     private:
         IGraphicsDevice* device_;
+        size_t maxNumberOfBuffers_;
         std::list<rtc::scoped_refptr<VideoFrameBuffer>> pool_;
     };
 }

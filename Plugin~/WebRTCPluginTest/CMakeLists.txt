@@ -23,6 +23,7 @@ target_sources(WebRTCLibTest
     UnityVideoDecoderFactoryTest.cpp
     VideoCodecTest.cpp
     VideoCodecTest.h
+    VideoFrameBufferPoolTest.cpp
     VideoFrameSchedulerTest.cpp
     VideoFrameTest.cpp
     VideoRendererTest.cpp
