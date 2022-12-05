@@ -58,9 +58,8 @@ namespace Unity.WebRTC
             { "Best Performance", 1024 },
         };
 
-    void Start()
+        void Start()
         {
-            StartCoroutine(WebRTC.Update());
             StartCoroutine(LoopStatsCoroutine());
 
             toggleEnableMicrophone.isOn = false;

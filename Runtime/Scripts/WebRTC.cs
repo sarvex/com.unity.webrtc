@@ -644,6 +644,7 @@ namespace Unity.WebRTC
 #endif
         private static Context s_context = null;
         private static SynchronizationContext s_syncContext;
+        private static GameObject s_obj;
 
         /// <summary>
         ///
@@ -662,6 +663,13 @@ namespace Unity.WebRTC
         {
             // Initialize a custom invokable synchronization context to wrap the main thread UnitySynchronizationContext
             s_syncContext = new ExecutableUnitySynchronizationContext(SynchronizationContext.Current);
+
+            // Instantiate GameObject for coroutine.
+            s_obj = new GameObject("webrtc");
+            s_obj.hideFlags = HideFlags.HideAndDontSave;
+            UnityEngine.Object.DontDestroyOnLoad(s_obj);
+            var comp = s_obj.AddComponent<UpdateCoroutine>();
+            comp.routine = UpdateInternal;
         }
 
         internal static void InitializeInternal(bool limitTextureSize = true, bool enableNativeLog = false,
@@ -688,7 +696,18 @@ namespace Unity.WebRTC
         ///
         /// </summary>
         /// <returns></returns>
+        [Obsolete]
         public static IEnumerator Update()
+        {
+            var instruction = new WaitForEndOfFrame();
+
+            while (true)
+            {
+                yield return instruction;
+            }
+        }
+
+        public static IEnumerator UpdateInternal()
         {
             var instruction = new WaitForEndOfFrame();
 
