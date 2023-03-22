@@ -101,20 +101,26 @@ T data_;
 patch -N "src\third_party\abseil-cpp/absl/base/config.h" < "BuildScripts~\patches\fix_abseil.patch"
 ```
 
-## Workaround for crash when encoding Full HD resolution or higher using VideoToolbox on macOS(Intel)
+## Workaround for encode Full HD resolution or higher using VideoToolbox on macOS
+
+1. Workaround for crash when encoding Full HD resolution or higher using VideoToolbox on macOS(Intel)
 
 Crash occurs when encoding FullHD or higher resolutions using VideoToolbox. This workaround referred from [here](https://groups.google.com/g/discuss-webrtc/c/AVeyMXnM0gY).
 
+2. Workaround can't send video in FullHD or higher resolution using VideoToolbox. 
+
+H264Baseline3.1Level in VideoToolbox does not encode at resolutions higher than Full HD. By using H264AutoLevel, fix it so that encoding is done.
+
 ### Patch file
 
-- avoid_crashusingvideoencoderh264.patch
+- fix_h264encoder_onmac.patch
 
 ### Example
 
 ```
 # `src` is a root directory of libwebrtc.
 
-patch -N "src/sdk/objc/components/video_codec/RTCVideoEncoderH264.mm" < "BuildScripts~/patches/avoid_crashusingvideoencoderh264.patch"
+patch -N "src/sdk/objc/components/video_codec/RTCVideoEncoderH264.mm" < "BuildScripts~/patches/fix_h264encoder_onmac.patch"
 ```
 
 ## Workaround for can't be profiled correctly encode/decode process on macOS/iOS

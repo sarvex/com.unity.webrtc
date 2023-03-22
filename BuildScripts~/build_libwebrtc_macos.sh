@@ -33,9 +33,10 @@ patch -N "src/api/task_queue/BUILD.gn" < "$COMMAND_DIR/patches/disable_task_queu
 # add objc library to use videotoolbox
 patch -N "src/sdk/BUILD.gn" < "$COMMAND_DIR/patches/add_objc_deps.patch"
 
-# avoid crashes when using Full HD resolution with HWA enabled
-# workaround referred from this discussion: https://groups.google.com/g/discuss-webrtc/c/AVeyMXnM0gY
-patch -N "src/sdk/objc/components/video_codec/RTCVideoEncoderH264.mm" < "$COMMAND_DIR/patches/avoid_crashusingvideoencoderh264.patch"
+# 1. avoid crashes when using Full HD resolution with HWA enabled
+#    workaround referred from this discussion: https://groups.google.com/g/discuss-webrtc/c/AVeyMXnM0gY
+# 2. fixed an issue where video could not be sent in resolutions higher than FullHD
+patch -N "src/sdk/objc/components/video_codec/RTCVideoEncoderH264.mm" < "$COMMAND_DIR/patches/fix_h264encoder_onmac.patch"
 
 mkdir -p "$ARTIFACTS_DIR/lib"
 
