@@ -43,9 +43,10 @@ for is_debug in "true" "false"
 do
   for target_cpu in "x64" "arm64"
   do
-
+    # cache each architecture and debug flag
+    out_dir="${OUTPUT_DIR}_${target_cpu}_${is_debug}"
     # generate ninja files
-    gn gen "$OUTPUT_DIR" --root="src" \
+    gn gen "${out_dir}" --root="src" \
       --args="is_debug=${is_debug} \
       target_os=\"mac\"  \
       target_cpu=\"${target_cpu}\" \
@@ -60,11 +61,11 @@ do
       rtc_use_x11=false"
 
     # build static library
-    ninja -C "$OUTPUT_DIR" webrtc
+    ninja -C "${out_dir}" webrtc
 
     # copy static library
     mkdir -p "$ARTIFACTS_DIR/lib/${target_cpu}"
-    cp "$OUTPUT_DIR/obj/libwebrtc.a" "$ARTIFACTS_DIR/lib/${target_cpu}/"
+    cp "${out_dir}/obj/libwebrtc.a" "$ARTIFACTS_DIR/lib/${target_cpu}/"
   done
 
   filename="libwebrtc.a"
